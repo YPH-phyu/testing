@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ohm's Law AI Tutor & Infinite Quiz Lab | 電壓、電流與電阻互動學習平台</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar and subtle transitions */
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 12px rgba(234, 179, 8, 0.4); }
+            50% { box-shadow: 0 0 24px rgba(234, 179, 8, 0.85); }
+        }
+        .bulb-glow {
+            animation: pulseGlow 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Custom Notification Banner / Toast (Replaces alert()) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row justify-between items-center py-3 sm:h-16 gap-3 sm:gap-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-slate-900 font-bold text-xl shadow-md">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg tracking-tight leading-none">Physics AI Circuit Lab</h1>
+                        <p class="text-xs text-slate-400 mt-1">電壓 (V) · 電流 (I) · 電阻 (R) 互動學習與無限測驗</p>
+                    </div>
+                </div>
+
+                <!-- Module Switcher Navigation -->
+                <nav class="flex bg-slate-800 p-1 rounded-xl w-full sm:w-auto justify-around sm:justify-start">
+                    <button onclick="switchTab('teaching')" id="nav-teaching" class="tab-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-all bg-blue-600 text-white shadow">
+                        <i class="fa-solid fa-book-open mr-1.5"></i>教學模組
+                    </button>
+                    <button onclick="switchTab('quiz')" id="nav-quiz" class="tab-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-all">
+                        <i class="fa-solid fa-robot mr-1.5"></i>AI 無限測驗
+                    </button>
+                    <button onclick="switchTab('history')" id="nav-history" class="tab-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-all relative">
+                        <i class="fa-solid fa-clock-rotate-left mr-1.5"></i>成績紀錄
+                        <span id="history-badge" class="hidden ml-1 bg-amber-500 text-slate-900 text-xs font-bold px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button onclick="switchTab('gas')" id="nav-gas" class="tab-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-all">
+                        <i class="fa-solid fa-code mr-1.5"></i>GAS 設定
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- =====================================================================
+             MODULE 1: TEACHING MODULE (Concepts, Interactive Simulator & Examples)
+             ===================================================================== -->
+        <section id="module-teaching" class="space-y-8">
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl">
+                <div class="max-w-3xl">
+                    <span class="inline-block bg-blue-500/30 border border-blue-400/40 text-blue-100 text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                        單元一：基礎電學核心概念 (Basic Electricity)
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-3">
+                        掌握歐姆定律：電壓、電流與電阻的奧秘
+                    </h2>
+                    <p class="text-blue-100 text-sm sm:text-base leading-relaxed">
+                        透過生活化比喻、互動電路模擬器與經典計算例題，輕鬆理解電學三大物理量之間的關係：$V = I \times R$。準備好後即可切換至「AI 無限測驗」挑戰自我！
+                    </p>
+                </div>
+            </div>
+
+            <!-- 3 Core Concept Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Voltage Card -->
+                <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow border-t-4 border-t-amber-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl">
+                            <i class="fa-solid fa-car-battery"></i>
+                        </div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-3 py-1 rounded-full">符號: V | 單位: 伏特 (V)</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">電壓 (Voltage / 電位差)</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                        推動電荷在電路中流動的「動力」或「電位差」。電壓越高，推動電子流動的力量就越大。
+                    </p>
+                    <div class="bg-amber-50/70 rounded-xl p-3 text-xs text-slate-700 border border-amber-100">
+                        <strong class="text-amber-800"><i class="fa-solid fa-water mr-1"></i>水管比喻：</strong>就像水塔的高度（水壓）。水塔越高，水壓越大，水流衝力越強。
+                    </div>
+                </div>
+
+                <!-- Current Card -->
+                <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow border-t-4 border-t-blue-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-2xl">
+                            <i class="fa-solid fa-wave-square"></i>
+                        </div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full">符號: I | 單位: 安培 (A)</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">電流 (Electric Current)</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                        單位時間內通過導體橫截面的電荷量 ($I = Q/t$)。傳統電流方向定義為由電源正極流向負極。
+                    </p>
+                    <div class="bg-blue-50/70 rounded-xl p-3 text-xs text-slate-700 border border-blue-100">
+                        <strong class="text-blue-800"><i class="fa-solid fa-water mr-1"></i>水管比喻：</strong>就像水管中每秒流過的水量（水流速度）。
+                    </div>
+                </div>
+
+                <!-- Resistance Card -->
+                <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow border-t-4 border-t-rose-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl">
+                            <i class="fa-solid fa-resistor">≋</i>
+                        </div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-3 py-1 rounded-full">符號: R | 單位: 歐姆 (Ω)</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">電阻 (Resistance)</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                        導體對電流流動的阻礙作用。電阻受材料、長度（越長越大）、橫截面積（越粗越小）及溫度影響。
+                    </p>
+                    <div class="bg-rose-50/70 rounded-xl p-3 text-xs text-slate-700 border border-rose-100">
+                        <strong class="text-rose-800"><i class="fa-solid fa-water mr-1"></i>水管比喻：</strong>就像水管中的沙石或狹窄處，阻礙水流通過。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Ohm's Law Lab Simulator -->
+            <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-md">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4 mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-blue-600"></i>
+                            互動歐姆定律實驗室 (Ohm's Law Simulator)
+                        </h3>
+                        <p class="text-sm text-slate-500">拖動滑桿調整電壓 (V) 與電阻 (R)，即時觀察電流 (I) 與燈泡亮度的變化</p>
+                    </div>
+                    <div class="bg-slate-900 text-white px-4 py-2 rounded-xl font-mono text-sm sm:text-base font-bold shadow-inner text-center">
+                        V = I × R &nbsp;⟹&nbsp; <span id="sim-formula-display" class="text-amber-400">12.0V = 2.00A × 6.0Ω</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    <!-- Controls -->
+                    <div class="lg:col-span-5 space-y-6 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                        <!-- Voltage Slider -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="font-semibold text-slate-700 text-sm flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-amber-500"></span> 電源電壓 (Voltage, V)
+                                </label>
+                                <span id="val-voltage" class="font-mono font-bold text-amber-600 bg-amber-100 px-2.5 py-0.5 rounded-lg text-sm">12.0 V</span>
+                            </div>
+                            <input type="range" id="slider-voltage" min="1" max="24" step="0.5" value="12" class="w-full" oninput="updateSimulator()">
+                            <div class="flex justify-between text-xs text-slate-400 mt-1">
+                                <span>1V</span>
+                                <span>12V</span>
+                                <span>24V</span>
+                            </div>
+                        </div>
+
+                        <!-- Resistance Slider -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="font-semibold text-slate-700 text-sm flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-rose-500"></span> 電路電阻 (Resistance, R)
+                                </label>
+                                <span id="val-resistance" class="font-mono font-bold text-rose-600 bg-rose-100 px-2.5 py-0.5 rounded-lg text-sm">6.0 Ω</span>
+                            </div>
+                            <input type="range" id="slider-resistance" min="1" max="20" step="0.5" value="6" class="w-full" oninput="updateSimulator()">
+                            <div class="flex justify-between text-xs text-slate-400 mt-1">
+                                <span>1Ω</span>
+                                <span>10Ω</span>
+                                <span>20Ω</span>
+                            </div>
+                        </div>
+
+                        <!-- Calculated Current & Power Output -->
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div class="bg-white p-3.5 rounded-xl border border-blue-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium">計算電流 (I = V/R)</div>
+                                <div id="val-current" class="text-2xl font-extrabold text-blue-600 font-mono mt-1">2.00 A</div>
+                            </div>
+                            <div class="bg-white p-3.5 rounded-xl border border-emerald-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium">電功率 (P = V×I)</div>
+                                <div id="val-power" class="text-2xl font-extrabold text-emerald-600 font-mono mt-1">24.0 W</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual SVG Circuit Diagram -->
+                    <div class="lg:col-span-7 flex flex-col items-center justify-center bg-slate-900 rounded-2xl p-6 text-white relative overflow-hidden">
+                        <svg viewBox="0 0 460 230" class="w-full max-w-lg h-auto">
+                            <!-- Circuit Wire Loop -->
+                            <rect x="70" y="45" width="320" height="140" rx="16" fill="none" stroke="#475569" stroke-width="6" />
+                            <!-- Animated Electron Flow Dashed Line -->
+                            <rect id="electron-flow" x="70" y="45" width="320" height="140" rx="16" fill="none" stroke="#38bdf8" stroke-width="3" stroke-dasharray="10 14">
+                                <animate id="flow-anim" attributeName="stroke-dashoffset" from="240" to="0" dur="2s" repeatCount="indefinite" />
+                            </rect>
+
+                            <!-- Battery Symbol (Left) -->
+                            <rect x="45" y="85" width="50" height="60" fill="#0f172a" />
+                            <line x1="52" y1="102" x2="88" y2="102" stroke="#f59e0b" stroke-width="5" stroke-linecap="round" />
+                            <line x1="60" y1="114" x2="80" y2="114" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" />
+                            <line x1="52" y1="126" x2="88" y2="126" stroke="#f59e0b" stroke-width="5" stroke-linecap="round" />
+                            <text x="25" y="120" fill="#fbbf24" font-size="14" font-weight="bold" id="svg-v-label">12V</text>
+
+                            <!-- Resistor Zigzag (Bottom) -->
+                            <rect x="170" y="170" width="120" height="30" fill="#0f172a" />
+                            <polyline points="175,185 185,173 200,197 215,173 230,197 245,173 260,197 275,173 285,185" fill="none" stroke="#f43f5e" stroke-width="4" stroke-linejoin="round" />
+                            <text x="230" y="216" fill="#fb7185" font-size="13" font-weight="bold" text-anchor="middle" id="svg-r-label">R = 6.0 Ω</text>
+
+                            <!-- Ammeter (Top) -->
+                            <circle cx="230" cy="45" r="22" fill="#1e293b" stroke="#3b82f6" stroke-width="3" />
+                            <text x="230" y="50" fill="#60a5fa" font-size="14" font-weight="bold" text-anchor="middle">A</text>
+                            <text x="230" y="16" fill="#93c5fd" font-size="13" font-weight="bold" text-anchor="middle" id="svg-i-label">I = 2.00 A</text>
+
+                            <!-- Light Bulb Indicator (Right) -->
+                            <circle id="svg-bulb-halo" cx="390" cy="115" r="32" fill="#facc15" opacity="0.35" />
+                            <circle cx="390" cy="115" r="18" fill="#fef08a" stroke="#eab308" stroke-width="3" />
+                            <path d="M384,115 Q390,102 396,115" fill="none" stroke="#ca8a04" stroke-width="2.5" />
+                            <text x="422" y="120" fill="#fde047" font-size="12" font-weight="bold" id="svg-bulb-status">正常發光</text>
+                        </svg>
+                        <p class="text-xs text-slate-400 mt-2 text-center">
+                            💡 觀察提示：當電壓升高或電阻降低時，藍色電流粒子流動加快，燈泡亮度隨功率增加！
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Worked Examples & Series/Parallel Summary -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Worked Examples -->
+                <div class="glass-card rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chalkboard-user text-indigo-600"></i>
+                        經典例題精解 (Worked Examples)
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded">例題 1：基本歐姆定律</span>
+                                <span class="text-xs text-slate-400">公式: I = V / R</span>
+                            </div>
+                            <p class="text-sm font-medium text-slate-800 mb-2">
+                                一個電阻值為 $15\,\Omega$ 的電熱器接在 $220\,\text{V}$ 的電源上，求通過電熱器的電流是多少？（取至小數點後兩位）
+                            </p>
+                            <div class="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-100 space-y-1">
+                                <p><strong>已知：</strong>電壓 $V = 220\,\text{V}$，電阻 $R = 15\,\Omega$</p>
+                                <p><strong>計算：</strong>$I = \frac{V}{R} = \frac{220}{15} \approx 14.67\,\text{A}$</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded">例題 2：串聯與並聯等效電阻</span>
+                                <span class="text-xs text-slate-400">串聯相加 / 並聯倒數和</span>
+                            </div>
+                            <p class="text-sm font-medium text-slate-800 mb-2">
+                                將兩個 $10\,\Omega$ 的電阻分別以「串聯」和「並聯」連接，求兩者的總電阻各是多少？
+                            </p>
+                            <div class="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-100 space-y-1">
+                                <p><strong>串聯總電阻：</strong>$R_{\text{總}} = R_1 + R_2 = 10 + 10 = 20\,\Omega$（電阻變大）</p>
+                                <p><strong>並聯總電阻：</strong>$\frac{1}{R_{\text{總}}} = \frac{1}{10} + \frac{1}{10} = \frac{2}{10} \Rightarrow R_{\text{總}} = 5\,\Omega$（電阻變小）</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formula Cheat Sheet -->
+                <div class="glass-card rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-table-list text-amber-600"></i>
+                            重點公式與電路規律速查表
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-700">
+                                        <th class="p-3 rounded-tl-lg font-semibold">物理關係</th>
+                                        <th class="p-3 font-semibold">核心公式</th>
+                                        <th class="p-3 rounded-tr-lg font-semibold">關鍵記憶點</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 text-slate-600">
+                                    <tr>
+                                        <td class="p-3 font-medium text-slate-800">歐姆定律</td>
+                                        <td class="p-3 font-mono font-bold text-blue-600">V = I × R</td>
+                                        <td class="p-3">電阻不變時，電流與電壓成正比</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-3 font-medium text-slate-800">串聯電路 (Series)</td>
+                                        <td class="p-3 font-mono text-xs">I總 = I₁ = I₂<br>V總 = V₁ + V₂<br>R總 = R₁ + R₂</td>
+                                        <td class="p-3">電流處處相等，電阻越大分壓越多</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-3 font-medium text-slate-800">並聯電路 (Parallel)</td>
+                                        <td class="p-3 font-mono text-xs">V總 = V₁ = V₂<br>I總 = I₁ + I₂<br>1/R總 = 1/R₁ + 1/R₂</td>
+                                        <td class="p-3">各支路電壓相等，總電阻比任何分電阻都小</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-3 font-medium text-slate-800">電流定義</td>
+                                        <td class="p-3 font-mono font-bold text-indigo-600">Q = I × t</td>
+                                        <td class="p-3">1 安培 = 每秒通過 1 庫侖電荷 (1 C/s)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
+                        <button onclick="switchTab('quiz')" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                            <span>已掌握概念？前往 AI 無限測驗</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             MODULE 2: INFINITE AI QUIZ GENERATOR MODULE
+             ===================================================================== -->
+        <section id="module-quiz" class="hidden space-y-6">
+
+            <!-- STEP 1: Quiz Setup & Student Info Form -->
+            <div id="quiz-setup-view" class="max-w-3xl mx-auto glass-card rounded-2xl p-6 sm:p-8 shadow-lg">
+                <div class="flex items-center gap-3 mb-6 border-b border-slate-200 pb-4">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900">AI 無限題庫測驗生成器</h2>
+                        <p class="text-sm text-slate-500">每題 4 分 · 單一正確選項 · 即時 AI 題解與成績報告發送</p>
+                    </div>
+                </div>
+
+                <form id="quiz-config-form" onsubmit="startQuiz(event)" class="space-y-6">
+                    <!-- Student Information (Mandatory for Report) -->
+                    <div class="bg-blue-50/60 p-5 rounded-2xl border border-blue-100 space-y-4">
+                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-user-graduate text-blue-600"></i>
+                            學生資料填寫（將顯示於測驗報告並發送給老師）
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">學生姓名 <span class="text-rose-500">*</span></label>
+                                <input type="text" id="student-name" required placeholder="例如：陳大文" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">班別 (Class) <span class="text-rose-500">*</span></label>
+                                <input type="text" id="student-class" required placeholder="例如：3A" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">學號 (Class No.) <span class="text-rose-500">*</span></label>
+                                <input type="text" id="student-id" required placeholder="例如：15" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quiz Parameters -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <!-- Question Count -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                <i class="fa-solid fa-list-ol text-indigo-500 mr-1"></i> 題目數量 (每題 4 分)
+                            </label>
+                            <select id="quiz-count" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white font-medium">
+                                <option value="5" selected>5 題 (滿分 20 分)</option>
+                                <option value="10">10 題 (滿分 40 分)</option>
+                                <option value="15">15 題 (滿分 60 分)</option>
+                                <option value="20">20 題 (滿分 80 分)</option>
+                                <option value="25">25 題 (滿分 100 分)</option>
+                            </select>
+                        </div>
+
+                        <!-- Difficulty Level -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                <i class="fa-solid fa-gauge-high text-amber-500 mr-1"></i> 題目難度
+                            </label>
+                            <select id="quiz-difficulty" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white font-medium">
+                                <option value="easy">初階基礎 (概念定義與單位)</option>
+                                <option value="medium" selected>中階應用 (歐姆定律單步計算)</option>
+                                <option value="hard">高階挑戰 (串並聯電路與綜合推理)</option>
+                                <option value="mixed">混合難度 (由淺入深全面測試)</option>
+                            </select>
+                        </div>
+
+                        <!-- Timer Setting -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                <i class="fa-solid fa-stopwatch text-rose-500 mr-1"></i> 測驗計時器
+                            </label>
+                            <select id="quiz-timer" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white font-medium">
+                                <option value="300">5 分鐘 (300 秒)</option>
+                                <option value="600" selected>10 分鐘 (600 秒)</option>
+                                <option value="900">15 分鐘 (900 秒)</option>
+                                <option value="1200">20 分鐘 (1200 秒)</option>
+                                <option value="0">不限時 (自由練習模式)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- AI Engine Mode Toggle -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-start gap-3">
+                            <i class="fa-solid fa-microchip text-indigo-600 text-lg mt-0.5"></i>
+                            <div>
+                                <div class="text-sm font-bold text-slate-800">AI 動態出題引擎狀態</div>
+                                <div class="text-xs text-slate-500">結合 Gemini AI 雲端生成與無限參數化物理題庫演算法，確保每次題目絕不重複！</div>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-full shrink-0">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> AI 引擎就緒
+                        </span>
+                    </div>
+
+                    <button type="submit" id="btn-start-quiz" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-base">
+                        <i class="fa-solid fa-play"></i>
+                        <span>生成 AI 試卷並開始計時測驗</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- STEP 1.5: AI Loading State -->
+            <div id="quiz-loading-view" class="hidden max-w-xl mx-auto glass-card rounded-2xl p-10 text-center shadow-lg space-y-4">
+                <div class="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+                <h3 class="text-xl font-bold text-slate-800">AI 正在為您量身生成獨特物理試題...</h3>
+                <p id="loading-subtext" class="text-sm text-slate-500">正在計算隨機電路數值與生成深度題解分析</p>
+            </div>
+
+            <!-- STEP 2: Active Quiz Interface -->
+            <div id="quiz-active-view" class="hidden max-w-4xl mx-auto space-y-4">
+                <!-- Top Status Bar: Student Info, Progress, Timer -->
+                <div class="glass-card rounded-2xl p-4 sm:px-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-blue-100 text-blue-700 font-bold px-3 py-1.5 rounded-xl text-sm">
+                            <i class="fa-solid fa-user mr-1"></i> <span id="active-student-badge"></span>
+                        </div>
+                        <div class="text-sm font-semibold text-slate-600">
+                            進度：<span id="active-progress-text" class="text-blue-600 font-bold">1 / 5</span>
+                            <span class="text-xs text-slate-400 ml-1">(每題 4 分)</span>
+                        </div>
+                    </div>
+
+                    <!-- Countdown Timer -->
+                    <div id="timer-box" class="flex items-center gap-2 bg-slate-900 text-white px-4 py-1.5 rounded-xl font-mono font-bold text-base shadow">
+                        <i class="fa-solid fa-clock text-amber-400"></i>
+                        <span id="timer-display">10:00</span>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div id="quiz-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 20%"></div>
+                </div>
+
+                <!-- Question Card -->
+                <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-md">
+                    <div class="flex items-center justify-between mb-4">
+                        <span id="question-tag" class="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-indigo-100 text-indigo-700">
+                            第 1 題 · 4 分
+                        </span>
+                        <span id="question-diff-badge" class="text-xs font-medium text-slate-500">難度：中階</span>
+                    </div>
+
+                    <h3 id="question-text" class="text-lg sm:text-xl font-bold text-slate-900 leading-relaxed mb-6">
+                        題目載入中...
+                    </h3>
+
+                    <!-- Options List (Single Choice) -->
+                    <div id="options-container" class="space-y-3">
+                        <!-- Options injected via JS -->
+                    </div>
+
+                    <!-- Navigation Buttons -->
+                    <div class="mt-8 pt-5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                        <button type="button" onclick="prevQuestion()" id="btn-prev-q" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-semibold text-sm hover:bg-slate-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-chevron-left mr-1"></i> 上一題
+                        </button>
+
+                        <div class="flex items-center gap-3 ml-auto">
+                            <button type="button" onclick="nextQuestion()" id="btn-next-q" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow transition-all">
+                                下一題 <i class="fa-solid fa-chevron-right ml-1"></i>
+                            </button>
+                            <button type="button" onclick="confirmSubmitQuiz()" id="btn-submit-q" class="hidden px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all">
+                                <i class="fa-solid fa-paper-plane mr-1"></i> 提交試卷並生成報告
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Question Navigator Pills -->
+                <div class="glass-card rounded-2xl p-4 shadow-sm">
+                    <div class="text-xs font-semibold text-slate-500 mb-2.5">題號快速跳轉（綠色代表已作答）：</div>
+                    <div id="question-pills" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+
+            <!-- STEP 3: Post-Quiz Detailed Report View -->
+            <div id="quiz-report-view" class="hidden max-w-4xl mx-auto space-y-6">
+                <!-- Action Bar (Send Email via GAS, Print, Retake) -->
+                <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 border-l-4 border-l-emerald-500">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-check-double"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-base">測驗完成！成績已自動儲存至本機紀錄</h3>
+                            <p class="text-xs text-slate-500">請點擊右側按鈕透過 Google Apps Script (GAS) 將完整報告寄送給老師 (<span class="font-mono text-slate-700">yph@np2c.edu.hk</span>)</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+                        <button onclick="sendReportToTeacherGAS()" id="btn-send-gas" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl shadow transition-all text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-envelope-circle-check"></i>
+                            <span>發送報告給老師</span>
+                        </button>
+                        <button onclick="resetQuizToSetup()" class="flex-1 sm:flex-none bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold px-4 py-2.5 rounded-xl transition-all text-sm">
+                            <i class="fa-solid fa-rotate-right mr-1"></i> 再測一次
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Official Report Card -->
+                <div id="printable-report" class="glass-card rounded-2xl overflow-hidden shadow-lg border border-slate-200">
+                    <!-- Report Header -->
+                    <div class="bg-slate-900 text-white p-6 sm:p-8">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700 pb-5">
+                            <div>
+                                <span class="text-xs font-bold uppercase tracking-widest text-amber-400">PHYSICS AI ASSESSMENT REPORT</span>
+                                <h2 class="text-2xl font-extrabold mt-1">電壓、電流與電阻 — 學生測驗成績報告</h2>
+                            </div>
+                            <div class="text-left sm:text-right">
+                                <div class="text-xs text-slate-400">測驗完成時間</div>
+                                <div id="rep-timestamp" class="font-mono text-sm font-semibold text-slate-200">--</div>
+                            </div>
+                        </div>
+
+                        <!-- Student Metadata & Total Score -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-5">
+                            <div class="bg-slate-800/80 p-3.5 rounded-xl">
+                                <div class="text-xs text-slate-400">學生姓名</div>
+                                <div id="rep-name" class="text-lg font-bold text-white mt-0.5">--</div>
+                            </div>
+                            <div class="bg-slate-800/80 p-3.5 rounded-xl">
+                                <div class="text-xs text-slate-400">班別 / 學號</div>
+                                <div id="rep-class-id" class="text-lg font-bold text-white mt-0.5">--</div>
+                            </div>
+                            <div class="bg-slate-800/80 p-3.5 rounded-xl">
+                                <div class="text-xs text-slate-400">答對題數 / 用時</div>
+                                <div id="rep-accuracy" class="text-lg font-bold text-blue-400 mt-0.5">--</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-amber-500 to-orange-600 p-3.5 rounded-xl text-slate-950 shadow">
+                                <div class="text-xs font-bold uppercase opacity-80">測驗總分 (每題4分)</div>
+                                <div id="rep-score" class="text-2xl font-black mt-0.5">-- / --</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Diagnostic Summary Section -->
+                    <div class="p-6 sm:p-8 bg-indigo-50/50 border-b border-slate-200">
+                        <h3 class="text-base font-bold text-indigo-950 flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-brain text-indigo-600"></i>
+                            AI 題解與學習表現總結摘要 (AI Diagnostic Summary)
+                        </h3>
+                        <div id="rep-ai-summary" class="text-sm text-slate-700 leading-relaxed bg-white p-4 rounded-xl border border-indigo-100 shadow-sm">
+                            正在生成 AI 診斷分析...
+                        </div>
+                    </div>
+
+                    <!-- Question-by-Question Comparison Table / Cards -->
+                    <div class="p-6 sm:p-8 space-y-4">
+                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-list-check text-blue-600"></i>
+                            每題學生答案與正確答案對照及逐題 AI 題解
+                        </h3>
+                        <div id="rep-questions-list" class="space-y-4">
+                            <!-- Detailed question comparisons injected via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             MODULE 3: LOCALSTORAGE QUIZ HISTORY
+             ===================================================================== -->
+        <section id="module-history" class="hidden max-w-5xl mx-auto space-y-6">
+            <div class="glass-card rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-database text-blue-600"></i>
+                        本機測驗成績紀錄 (LocalStorage)
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1">所有測驗成績均自動保存在您的瀏覽器中，您可隨時檢視完整報告或補發電郵給老師。</p>
+                </div>
+                <button onclick="clearAllHistory()" class="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2.5 rounded-xl border border-rose-200 transition-all self-start sm:self-auto">
+                    <i class="fa-solid fa-trash-can mr-1"></i> 清除所有本機紀錄
+                </button>
+            </div>
+
+            <div id="history-list-container" class="space-y-4">
+                <!-- History items injected via JS -->
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             MODULE 4: GOOGLE APPS SCRIPT (GAS) WEBHOOK CONFIGURATION
+             ===================================================================== -->
+        <section id="module-gas" class="hidden max-w-4xl mx-auto space-y-6">
+            <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-md space-y-6">
+                <div class="border-b border-slate-200 pb-4">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">Teacher Email Integration</span>
+                    <h2 class="text-2xl font-bold text-slate-900 mt-2">Google Apps Script (GAS) 電郵發送設定</h2>
+                    <p class="text-sm text-slate-600 mt-1">
+                        本系統透過 Google Apps Script Web App 將學生成績報告自動寄送至老師信箱：<strong class="text-slate-900 font-mono bg-slate-100 px-2 py-0.5 rounded">yph@np2c.edu.hk</strong>。
+                    </p>
+                </div>
+
+                <!-- GAS Web App URL Input -->
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                    <label class="block text-sm font-bold text-slate-800">
+                        <i class="fa-solid fa-link text-blue-600 mr-1"></i> 貼上已部署的 GAS Web App URL：
+                    </label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono bg-white">
+                        <button onclick="saveGasUrl()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow transition-all text-sm shrink-0">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i> 儲存設定
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-500">
+                        提示：儲存後，網址會記錄於瀏覽器 `localStorage` 中。若尚未部署 GAS，請點擊下方按鈕複製後端程式碼並依步驟部署。
+                    </p>
+                </div>
+
+                <!-- Step-by-step Instructions -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-slate-800 text-base">如何設定 Google Apps Script？</h3>
+                    <ol class="list-decimal list-inside text-sm text-slate-600 space-y-2 bg-white p-5 rounded-xl border border-slate-200">
+                        <li>前往 <a href="https://script.google.com/" target="_blank" class="text-blue-600 underline font-medium">Google Apps Script</a> 並建立一個「新專案」。</li>
+                        <li>刪除預設程式碼，貼上專屬的 <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">Code.gs</code> 腳本（將自動發送 HTML 成績單至 <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">yph@np2c.edu.hk</code>）。</li>
+                        <li>點擊右上角 <strong>「部署 (Deploy)」 &rarr; 「新增部署 (New deployment)」</strong>。</li>
+                        <li>類型選擇 <strong>「網頁應用程式 (Web app)」</strong>，執行身分設為 <strong>「我 (Me)」</strong>，誰可以存取設為 <strong>「所有人 (Anyone)」</strong>。</li>
+                        <li>完成授權後，複製產生的 <strong>網頁應用程式網址 (Web app URL)</strong> 並貼上至上方欄位儲存即可！</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Confirmation Modal (Replaces window.confirm()) -->
+    <div id="custom-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 text-amber-600">
+                <i class="fa-solid fa-circle-exclamation text-2xl"></i>
+                <h3 id="modal-title" class="text-lg font-bold text-slate-900">確認操作</h3>
+            </div>
+            <p id="modal-message" class="text-sm text-slate-600 leading-relaxed">確定要執行此操作嗎？</p>
+            <div class="flex justify-end gap-3 pt-2">
+                <button id="modal-cancel-btn" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold text-sm hover:bg-slate-100">取消</button>
+                <button id="modal-confirm-btn" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-5 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+            <div>© 2026 Physics AI Circuit Lab · 電壓、電流與電阻互動教學與無限測驗系統</div>
+            <div>教師報告接收信箱：<span class="font-mono font-semibold text-slate-700">yph@np2c.edu.hk</span></div>
+        </div>
+    </footer>
+
+    <!-- =========================================================================
+         JAVASCRIPT APPLICATION LOGIC
+         ========================================================================= -->
+    <script>
+        // ---------------------------------------------------------------------
+        // 1. GLOBAL STATE & CONSTANTS
+        // ---------------------------------------------------------------------
+        const TEACHER_EMAIL = "yph@np2c.edu.hk";
+        const STORAGE_KEY_RESULTS = "physics_ai_quiz_results_v1";
+        const STORAGE_KEY_GAS_URL = "physics_ai_gas_webhook_url_v1";
+        const POINTS_PER_QUESTION = 4;
+
+        let currentQuiz = {
+            studentName: "",
+            studentClass: "",
+            studentId: "",
+            difficulty: "medium",
+            totalQuestions: 5,
+            timeLimitSeconds: 600,
+            timeRemaining: 600,
+            timeTaken: 0,
+            timerInterval: null,
+            questions: [], // Array of { id, question, options: [A,B,C,D], correctIndex, explanation, topic }
+            userAnswers: [], // Array of selected option indices (null if unanswered)
+            currentIndex: 0
+        };
+
+        let activeReportData = null; // Stores the currently viewed/completed report for GAS sending
+
+        // ---------------------------------------------------------------------
+        // 2. INITIALIZATION & UI HELPERS
+        // ---------------------------------------------------------------------
+        window.onload = function() {
+            updateSimulator();
+            loadGasUrl();
+            updateHistoryBadge();
+        };
+
+        // Tab Navigation Switcher
+        function switchTab(tabName) {
+            const tabs = ['teaching', 'quiz', 'history', 'gas'];
+            tabs.forEach(t => {
+                const section = document.getElementById(`module-${t}`);
+                const btn = document.getElementById(`nav-${t}`);
+                if (t === tabName) {
+                    section.classList.remove('hidden');
+                    btn.classList.remove('text-slate-300', 'hover:text-white');
+                    btn.classList.add('bg-blue-600', 'text-white', 'shadow');
+                } else {
+                    section.classList.add('hidden');
+                    btn.classList.add('text-slate-300', 'hover:text-white');
+                    btn.classList.remove('bg-blue-600', 'text-white', 'shadow');
+                }
+            });
+
+            if (tabName === 'history') {
+                renderHistoryList();
+            }
+        }
+
+        // Custom Toast Notification (No alert())
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-emerald-600 text-white border-emerald-700',
+                error: 'bg-rose-600 text-white border-rose-700',
+                warning: 'bg-amber-500 text-slate-950 border-amber-600',
+                info: 'bg-slate-800 text-white border-slate-900'
+            };
+            const icons = {
+                success: 'fa-circle-check',
+                error: 'fa-circle-xmark',
+                warning: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 transform translate-y-0 ${colors[type] || colors.info}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info} text-base"></i><span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+
+        // Custom Confirmation Modal (No confirm())
+        function showCustomConfirm(title, message, onConfirm) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            modal.classList.remove('hidden');
+
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                cancelBtn.onclick = null;
+                confirmBtn.onclick = null;
+            };
+
+            cancelBtn.onclick = cleanup;
+            confirmBtn.onclick = () => {
+                cleanup();
+                onConfirm();
+            };
+        }
+
+        // ---------------------------------------------------------------------
+        // 3. TEACHING MODULE: INTERACTIVE OHM'S LAW SIMULATOR
+        // ---------------------------------------------------------------------
+        function updateSimulator() {
+            const V = parseFloat(document.getElementById('slider-voltage').value);
+            const R = parseFloat(document.getElementById('slider-resistance').value);
+            const I = V / R;
+            const P = V * I;
+
+            document.getElementById('val-voltage').textContent = `${V.toFixed(1)} V`;
+            document.getElementById('val-resistance').textContent = `${R.toFixed(1)} Ω`;
+            document.getElementById('val-current').textContent = `${I.toFixed(2)} A`;
+            document.getElementById('val-power').textContent = `${P.toFixed(1)} W`;
+            document.getElementById('sim-formula-display').textContent = `${V.toFixed(1)}V = ${I.toFixed(2)}A × ${R.toFixed(1)}Ω`;
+
+            // Update SVG Circuit Diagram
+            document.getElementById('svg-v-label').textContent = `${V.toFixed(1)}V`;
+            document.getElementById('svg-r-label').textContent = `R = ${R.toFixed(1)} Ω`;
+            document.getElementById('svg-i-label').textContent = `I = ${I.toFixed(2)} A`;
+
+            // Adjust electron animation speed inversely proportional to current
+            const animDuration = Math.max(0.25, Math.min(6, 4 / Math.max(0.2, I)));
+            document.getElementById('flow-anim').setAttribute('dur', `${animDuration.toFixed(2)}s`);
+
+            // Adjust Bulb Glow based on Power
+            const halo = document.getElementById('svg-bulb-halo');
+            const statusText = document.getElementById('svg-bulb-status');
+            const opacity = Math.min(0.95, Math.max(0.1, P / 60));
+            const radius = Math.min(48, Math.max(20, 20 + P * 0.4));
+            halo.setAttribute('opacity', opacity.toFixed(2));
+            halo.setAttribute('r', radius.toFixed(1));
+
+            if (I < 0.5) {
+                statusText.textContent = "微弱發光";
+            } else if (I <= 3.0) {
+                statusText.textContent = "正常發光";
+            } else {
+                statusText.textContent = "高電流強光!";
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // 4. INFINITE AI QUIZ ENGINE (Gemini API + Infinite Parametric Generator)
+        // ---------------------------------------------------------------------
+        async function startQuiz(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('student-name').value.trim();
+            const sClass = document.getElementById('student-class').value.trim();
+            const sId = document.getElementById('student-id').value.trim();
+            const count = parseInt(document.getElementById('quiz-count').value, 10);
+            const difficulty = document.getElementById('quiz-difficulty').value;
+            const timerSec = parseInt(document.getElementById('quiz-timer').value, 10);
+
+            if (!name || !sClass || !sId) {
+                showToast("請完整填寫學生姓名、班別及學號！", "warning");
+                return;
+            }
+
+            // Switch to Loading View
+            document.getElementById('quiz-setup-view').classList.add('hidden');
+            document.getElementById('quiz-report-view').classList.add('hidden');
+            document.getElementById('quiz-loading-view').classList.remove('hidden');
+
+            try {
+                // Attempt Gemini AI Generation first, seamlessly backed by Infinite Parametric Physics Generator
+                const generatedQuestions = await generateInfiniteQuestions(count, difficulty);
+
+                currentQuiz = {
+                    studentName: name,
+                    studentClass: sClass,
+                    studentId: sId,
+                    difficulty: difficulty,
+                    totalQuestions: count,
+                    timeLimitSeconds: timerSec,
+                    timeRemaining: timerSec,
+                    timeTaken: 0,
+                    timerInterval: null,
+                    questions: generatedQuestions,
+                    userAnswers: new Array(count).fill(null),
+                    currentIndex: 0
+                };
+
+                document.getElementById('quiz-loading-view').classList.add('hidden');
+                document.getElementById('quiz-active-view').classList.remove('hidden');
+
+                setupActiveQuizUI();
+                startQuizTimer();
+                showToast(`已成功生成 ${count} 題 AI 物理試卷，測驗開始！`, "success");
+            } catch (err) {
+                console.error("Quiz generation fallback triggered:", err);
+                const fallbackQuestions = generateParametricQuestions(count, difficulty);
+                currentQuiz = {
+                    studentName: name,
+                    studentClass: sClass,
+                    studentId: sId,
+                    difficulty: difficulty,
+                    totalQuestions: count,
+                    timeLimitSeconds: timerSec,
+                    timeRemaining: timerSec,
+                    timeTaken: 0,
+                    timerInterval: null,
+                    questions: fallbackQuestions,
+                    userAnswers: new Array(count).fill(null),
+                    currentIndex: 0
+                };
+                document.getElementById('quiz-loading-view').classList.add('hidden');
+                document.getElementById('quiz-active-view').classList.remove('hidden');
+                setupActiveQuizUI();
+                startQuizTimer();
+            }
+        }
+
+        // Hybrid AI Generator: Calls Gemini API with Structured JSON Schema, falls back to infinite procedural generator
+        async function generateInfiniteQuestions(count, difficulty) {
+            const apiKey = ""; // Runtime environment injects key if available
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const diffLabels = {
+                easy: "初階基礎（電壓、電流、電阻的基本定義、符號、國際單位與生活例子）",
+                medium: "中階應用（歐姆定律 V=IR 計算、電荷 Q=It 計算、簡單電路分析）",
+                hard: "高階挑戰（串聯與並聯電阻計算、分壓與分流概念、導體長度與橫截面積對電阻的影響）",
+                mixed: "混合難度（涵蓋基礎概念、歐姆定律計算及串並聯電路推理）"
+            };
+
+            const prompt = `你是一位資深中學物理科老師。請生成 ${count} 題關於「電壓 (Voltage)、電流 (Current) 與電阻 (Resistance)」的繁體中文單項選擇題（MC）。
+難度要求：${diffLabels[difficulty]}。
+規則：
+1. 每題必須有且僅有 4 個選項，並且只有 1 個正確答案（correctIndex 為 0, 1, 2 或 3）。
+2. 數值必須隨機多變，避免重複常見教科書數字，確保計算準確（若有小數請在題目註明取至小數點後兩位）。
+3. 每題必須提供清晰易懂的「explanation」（AI 題解，列出公式與計算步驟）。`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                topic: { type: "STRING" },
+                                question: { type: "STRING" },
+                                options: {
+                                    type: "ARRAY",
+                                    items: { type: "STRING" }
+                                },
+                                correctIndex: { type: "INTEGER" },
+                                explanation: { type: "STRING" }
+                            },
+                            required: ["topic", "question", "options", "correctIndex", "explanation"]
+                        }
+                    }
+                }
+            };
+
+            // Fast timeout wrapper (6 seconds) so user never waits long if offline/no API key
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error("API status " + response.status);
+                const result = await response.json();
+                const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!rawText) throw new Error("Empty Gemini response");
+
+                const parsed = JSON.parse(rawText);
+                if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Invalid array");
+
+                // Validate and pad if needed
+                const validQuestions = parsed.slice(0, count).map((q, idx) => ({
+                    id: idx + 1,
+                    topic: q.topic || "基礎電學",
+                    question: q.question,
+                    options: q.options.slice(0, 4),
+                    correctIndex: (q.correctIndex >= 0 && q.correctIndex <= 3) ? q.correctIndex : 0,
+                    explanation: q.explanation
+                }));
+
+                if (validQuestions.length < count) {
+                    const extra = generateParametricQuestions(count - validQuestions.length, difficulty);
+                    extra.forEach((eq, i) => {
+                        eq.id = validQuestions.length + i + 1;
+                        validQuestions.push(eq);
+                    });
+                }
+                return validQuestions;
+            } catch (e) {
+                clearTimeout(timeoutId);
+                return generateParametricQuestions(count, difficulty);
+            }
+        }
+
+        // Infinite Procedural Physics Question Engine (Generates mathematically infinite unique questions)
+        function generateParametricQuestions(count, difficulty) {
+            const questions = [];
+            const usedSignatures = new Set();
+
+            const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            // Helper to shuffle options while tracking the correct answer
+            function buildOptions(correctVal, distractors) {
+                const uniqueSet = new Set([correctVal]);
+                for (const d of distractors) {
+                    if (uniqueSet.size < 4 && d !== correctVal) {
+                        uniqueSet.add(d);
+                    }
+                }
+                let fallbackCounter = 1;
+                while (uniqueSet.size < 4) {
+                    uniqueSet.add(`${correctVal} (選項 ${fallbackCounter++})`);
+                }
+                const arr = Array.from(uniqueSet);
+                // Fisher-Yates shuffle
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return {
+                    options: arr,
+                    correctIndex: arr.indexOf(correctVal)
+                };
+            }
+
+            // Question Templates across Easy, Medium, Hard
+            const templates = {
+                easy: [
+                    () => {
+                        const items = [
+                            { q: "在國際單位制 (SI) 中，電阻 (Resistance) 的標準單位是什麼？", a: "歐姆 (Ω)", d: ["伏特 (V)", "安培 (A)", "庫侖 (C)"], exp: "電阻的國際標準單位是歐姆，符號為 Ω；伏特是電壓單位，安培是電流單位。" },
+                            { q: "在國際單位制 (SI) 中，電流 (Electric Current) 的標準單位是什麼？", a: "安培 (A)", d: ["伏特 (V)", "歐姆 (Ω)", "瓦特 (W)"], exp: "電流的國際標準單位是安培 (Ampere)，符號為 A。" },
+                            { q: "在國際單位制 (SI) 中，電壓 (Voltage) 的標準單位是什麼？", a: "伏特 (V)", d: ["安培 (A)", "歐姆 (Ω)", "焦耳 (J)"], exp: "電壓（電位差）的國際標準單位是伏特 (Volt)，符號為 V。" },
+                            { q: "測量電路中某一元件兩端的電壓時，伏特計 (Voltmeter) 應如何連接？", a: "與該元件並聯連接", d: ["與該元件串聯連接", "直接連接在電源兩極之間不接負載", "任意連接皆可"], exp: "伏特計內阻極大，必須與被測元件「並聯」以測量其兩端電位差。" },
+                            { q: "測量電路中的電流大小時，安培計 (Ammeter) 應如何連接？", a: "與被測元件串聯連接", d: ["與被測元件並聯連接", "接在開關兩端", "只需連接正極即可"], exp: "安培計內阻極小，必須與被測元件「串聯」，讓相同電流流經安培計。" },
+                            { q: "若保持導體兩端的電壓不變，當電路的電阻增大時，通過電路的電流會如何變化？", a: "電流會減小", d: ["電流會增大", "電流保持不變", "電流會先增後減"], exp: "根據歐姆定律 I = V / R，當電壓 V 固定時，電流 I 與電阻 R 成反比，因此電阻增大會使電流減小。" },
+                            { q: "在金屬導體中，實際移動並形成電流的微粒是什麼？", a: "自由電子 (帶負電)", d: ["質子 (帶正電)", "中子 (不帶電)", "正離子"], exp: "金屬導體中的原子核固定不動，實際移動的是帶負電的自由電子，其移動方向與傳統電流方向相反。" }
+                        ];
+                        const item = pick(items);
+                        const built = buildOptions(item.a, item.d);
+                        return { topic: "基礎電學概念", question: item.q, ...built, explanation: item.exp };
+                    },
+                    () => {
+                        const lengthChange = pick(["增至原來的 2 倍", "增至原來的 3 倍", "減為原來的一半"]);
+                        const ans = lengthChange.includes("2 倍") ? "增至原來的 2 倍" : lengthChange.includes("3 倍") ? "增至原來的 3 倍" : "減為原來的一半";
+                        const built = buildOptions(ans, ["增至原來的 2 倍", "增至原來的 3 倍", "減為原來的一半", "保持不變", "增至原來的 4 倍"]);
+                        return {
+                            topic: "影響電阻的因素",
+                            question: `一條均勻銅線在溫度與橫截面積不變的情況下，若將其長度${lengthChange}，其電阻值會如何變化？`,
+                            ...built,
+                            explanation: `導體的電阻與其長度成正比 (R ∝ L)。當材料與粗細不變時，長度${lengthChange}，電阻亦會${ans}。`
+                        };
+                    }
+                ],
+                medium: [
+                    // V = I * R (Find V)
+                    () => {
+                        const I = (randInt(2, 25) * 0.2).toFixed(1);
+                        const R = randInt(3, 40);
+                        const V = (parseFloat(I) * R).toFixed(1);
+                        const built = buildOptions(`${V} V`, [
+                            `${(R / parseFloat(I)).toFixed(1)} V`,
+                            `${(parseFloat(I) + R).toFixed(1)} V`,
+                            `${(parseFloat(V) * 2).toFixed(1)} V`,
+                            `${(parseFloat(V) / 2).toFixed(1)} V`
+                        ]);
+                        return {
+                            topic: "歐姆定律計算 (求電壓)",
+                            question: `已知一個電阻值為 ${R} Ω 的電阻器中，有 ${I} A 的電流通過，求該電阻器兩端的電壓是多少？`,
+                            ...built,
+                            explanation: `根據歐姆定律公式 V = I × R，代入 I = ${I} A 與 R = ${R} Ω，得 V = ${I} × ${R} = ${V} V。`
+                        };
+                    },
+                    // I = V / R (Find I)
+                    () => {
+                        const R = randInt(4, 25);
+                        const I_exact = randInt(1, 12) * 0.5;
+                        const V = (R * I_exact).toFixed(1);
+                        const ans = `${I_exact.toFixed(2)} A`;
+                        const built = buildOptions(ans, [
+                            `${(parseFloat(V) * R).toFixed(2)} A`,
+                            `${(R / parseFloat(V)).toFixed(2)} A`,
+                            `${(I_exact + 1.5).toFixed(2)} A`,
+                            `${(I_exact * 2).toFixed(2)} A`
+                        ]);
+                        return {
+                            topic: "歐姆定律計算 (求電流)",
+                            question: `將一個 ${R} Ω 的定值電阻連接到 ${V} V 的直流電源兩端，求通過該電阻的電流為多少？`,
+                            ...built,
+                            explanation: `根據歐姆定律 I = V / R，代入 V = ${V} V 與 R = ${R} Ω，得 I = ${V} / ${R} = ${I_exact.toFixed(2)} A。`
+                        };
+                    },
+                    // R = V / I (Find R)
+                    () => {
+                        const I = randInt(2, 10) * 0.5;
+                        const R = randInt(5, 35);
+                        const V = (I * R).toFixed(1);
+                        const built = buildOptions(`${R} Ω`, [
+                            `${(parseFloat(V) * I).toFixed(1)} Ω`,
+                            `${(I / parseFloat(V)).toFixed(2)} Ω`,
+                            `${R + 5} Ω`,
+                            `${Math.max(1, R - 4)} Ω`
+                        ]);
+                        return {
+                            topic: "歐姆定律計算 (求電阻)",
+                            question: `某燈泡在 ${V} V 的工作電壓下正常發光，此時測得流經燈泡的電流為 ${I.toFixed(1)} A，求該燈泡此時的電阻值？`,
+                            ...built,
+                            explanation: `根據歐姆定律 R = V / I，代入 V = ${V} V 與 I = ${I.toFixed(1)} A，得 R = ${V} / ${I.toFixed(1)} = ${R} Ω。`
+                        };
+                    },
+                    // Q = I * t (Charge & Current)
+                    () => {
+                        const I = randInt(1, 8) * 0.5;
+                        const mins = randInt(1, 5);
+                        const secs = mins * 60;
+                        const Q = (I * secs).toFixed(0);
+                        const built = buildOptions(`${Q} C`, [
+                            `${(I * mins).toFixed(1)} C`,
+                            `${(secs / I).toFixed(0)} C`,
+                            `${(parseFloat(Q) * 2).toFixed(0)} C`,
+                            `${(parseFloat(Q) / 10).toFixed(1)} C`
+                        ]);
+                        return {
+                            topic: "電流與電荷量 (Q = It)",
+                            question: `若導線中的穩定電流為 ${I.toFixed(1)} A，在 ${mins} 分鐘內通過導線某一橫截面的總電荷量是多少庫侖 (C)？`,
+                            ...built,
+                            explanation: `先將時間換算為秒：t = ${mins} × 60 = ${secs} 秒。根據公式 Q = I × t = ${I.toFixed(1)} × ${secs} = ${Q} C。`
+                        };
+                    }
+                ],
+                hard: [
+                    // Series Circuit Calculation
+                    () => {
+                        const R1 = randInt(3, 15);
+                        const R2 = randInt(4, 20);
+                        const R_tot = R1 + R2;
+                        const I = randInt(1, 5);
+                        const V_tot = R_tot * I;
+                        const V1 = R1 * I;
+                        const built = buildOptions(`${V1} V`, [
+                            `${R2 * I} V`,
+                            `${V_tot} V`,
+                            `${(V_tot / 2).toFixed(1)} V`,
+                            `${R1 + I} V`
+                        ]);
+                        return {
+                            topic: "串聯電路分壓計算",
+                            question: `將一個 ${R1} Ω 的電阻 R₁ 與一個 ${R2} Ω 的電阻 R₂「串聯」後接在 ${V_tot} V 的電源上，求電阻 R₁ 兩端的電壓是多少？`,
+                            ...built,
+                            explanation: `串聯總電阻 R總 = R₁ + R₂ = ${R1} + ${R2} = ${R_tot} Ω。電路總電流 I = V總 / R總 = ${V_tot} / ${R_tot} = ${I} A。因此 R₁ 兩端電壓 V₁ = I × R₁ = ${I} × ${R1} = ${V1} V。`
+                        };
+                    },
+                    // Parallel Equivalent Resistance & Total Current
+                    () => {
+                        const pairs = [[6, 3, 2], [12, 4, 3], [10, 10, 5], [20, 5, 4], [15, 10, 6], [12, 6, 4]];
+                        const [R1, R2, R_eq] = pick(pairs);
+                        const V = R_eq * randInt(2, 6);
+                        const I_tot = V / R_eq;
+                        const built = buildOptions(`${I_tot} A`, [
+                            `${(V / (R1 + R2)).toFixed(2)} A`,
+                            `${(V / R1).toFixed(2)} A`,
+                            `${(V / R2).toFixed(2)} A`,
+                            `${I_tot + 2} A`
+                        ]);
+                        return {
+                            topic: "並聯電路總電流計算",
+                            question: `將 ${R1} Ω 與 ${R2} Ω 兩個電阻「並聯」連接到 ${V} V 的電源上，求從電源流出的總電流是多少？`,
+                            ...built,
+                            explanation: `並聯等效電阻 R總 = (R₁ × R₂) / (R₁ + R₂) = (${R1} × ${R2}) / (${R1} + ${R2}) = ${R_eq} Ω。總電流 I總 = V / R總 = ${V} / ${R_eq} = ${I_tot} A。`
+                        };
+                    },
+                    // Wire diameter / cross-sectional area effect on resistance
+                    () => {
+                        const factor = pick([2, 3]);
+                        const R_orig = factor * factor * randInt(2, 6);
+                        const R_new = R_orig / (factor * factor);
+                        const built = buildOptions(`${R_new} Ω`, [
+                            `${R_orig / factor} Ω`,
+                            `${R_orig * factor} Ω`,
+                            `${R_orig * factor * factor} Ω`,
+                            `${R_orig} Ω`
+                        ]);
+                        return {
+                            topic: "電阻定律進階推理",
+                            question: `一段金屬導線的電阻為 ${R_orig} Ω。若保持其材料、長度與溫度不變，將導線的直徑增大為原來的 ${factor} 倍，則新導線的電阻變為多少？`,
+                            ...built,
+                            explanation: `圓形導線橫截面積 A = π(d/2)² ∝ d²。當直徑增為 ${factor} 倍時，橫截面積增為 ${factor}² = ${factor * factor} 倍。由於電阻與橫截面積成反比，新電阻為 ${R_orig} / ${factor * factor} = ${R_new} Ω。`
+                        };
+                    }
+                ]
+            };
+
+            let safetyLoop = 0;
+            while (questions.length < count && safetyLoop < 300) {
+                safetyLoop++;
+                let poolKey = difficulty;
+                if (difficulty === 'mixed') {
+                    const mod = questions.length % 3;
+                    poolKey = mod === 0 ? 'easy' : mod === 1 ? 'medium' : 'hard';
+                }
+                const generatorFn = pick(templates[poolKey]);
+                const qObj = generatorFn();
+
+                if (!usedSignatures.has(qObj.question) || safetyLoop > 150) {
+                    usedSignatures.add(qObj.question);
+                    questions.push({
+                        id: questions.length + 1,
+                        ...qObj
+                    });
+                }
+            }
+            return questions;
+        }
+
+        // ---------------------------------------------------------------------
+        // 5. ACTIVE QUIZ INTERACTION & TIMER LOGIC
+        // ---------------------------------------------------------------------
+        function setupActiveQuizUI() {
+            document.getElementById('active-student-badge').textContent =
+                `${currentQuiz.studentName} (${currentQuiz.studentClass} · ${currentQuiz.studentId}號)`;
+
+            // Render Question Pills
+            const pillsContainer = document.getElementById('question-pills');
+            pillsContainer.innerHTML = '';
+            currentQuiz.questions.forEach((_, idx) => {
+                const pill = document.createElement('button');
+                pill.type = 'button';
+                pill.id = `pill-${idx}`;
+                pill.textContent = idx + 1;
+                pill.onclick = () => renderQuestion(idx);
+                pill.className = "w-9 h-9 rounded-lg text-xs font-bold border transition-all flex items-center justify-center bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200";
+                pillsContainer.appendChild(pill);
+            });
+
+            renderQuestion(0);
+        }
+
+        function renderQuestion(index) {
+            currentQuiz.currentIndex = index;
+            const q = currentQuiz.questions[index];
+            const total = currentQuiz.totalQuestions;
+
+            // Update Progress Text & Bar
+            document.getElementById('active-progress-text').textContent = `${index + 1} / ${total}`;
+            document.getElementById('quiz-progress-bar').style.width = `${((index + 1) / total) * 100}%`;
+
+            // Update Question Header & Text
+            document.getElementById('question-tag').textContent = `第 ${index + 1} 題 · ${q.topic} (4 分)`;
+            const diffMap = { easy: '初階基礎', medium: '中階應用', hard: '高階挑戰', mixed: '混合難度' };
+            document.getElementById('question-diff-badge').textContent = `難度：${diffMap[currentQuiz.difficulty] || '標準'}`;
+            document.getElementById('question-text').textContent = q.question;
+
+            // Render Options
+            const optContainer = document.getElementById('options-container');
+            optContainer.innerHTML = '';
+            const letters = ['A', 'B', 'C', 'D'];
+
+            q.options.forEach((optText, optIdx) => {
+                const isSelected = currentQuiz.userAnswers[index] === optIdx;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => selectOption(index, optIdx);
+                btn.className = isSelected
+                    ? "w-full text-left p-4 rounded-xl border-2 border-blue-600 bg-blue-50/90 text-blue-950 font-semibold flex items-center gap-3.5 shadow-sm transition-all"
+                    : "w-full text-left p-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-blue-300 text-slate-700 font-medium flex items-center gap-3.5 transition-all";
+
+                btn.innerHTML = `
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}">
+                        ${letters[optIdx]}
+                    </span>
+                    <span class="text-sm sm:text-base">${optText}</span>
+                `;
+                optContainer.appendChild(btn);
+            });
+
+            // Update Navigation Buttons
+            document.getElementById('btn-prev-q').disabled = (index === 0);
+            if (index === total - 1) {
+                document.getElementById('btn-next-q').classList.add('hidden');
+                document.getElementById('btn-submit-q').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-next-q').classList.remove('hidden');
+                document.getElementById('btn-submit-q').classList.add('hidden');
+            }
+
+            // Update Pills Highlight
+            currentQuiz.questions.forEach((_, i) => {
+                const pill = document.getElementById(`pill-${i}`);
+                const answered = currentQuiz.userAnswers[i] !== null;
+                if (i === index) {
+                    pill.className = "w-9 h-9 rounded-lg text-xs font-bold border-2 border-blue-600 bg-blue-600 text-white shadow flex items-center justify-center";
+                } else if (answered) {
+                    pill.className = "w-9 h-9 rounded-lg text-xs font-bold border border-emerald-400 bg-emerald-100 text-emerald-800 flex items-center justify-center";
+                } else {
+                    pill.className = "w-9 h-9 rounded-lg text-xs font-bold border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center";
+                }
+            });
+        }
+
+        function selectOption(qIndex, optIndex) {
+            currentQuiz.userAnswers[qIndex] = optIndex;
+            renderQuestion(qIndex);
+        }
+
+        function prevQuestion() {
+            if (currentQuiz.currentIndex > 0) {
+                renderQuestion(currentQuiz.currentIndex - 1);
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuiz.currentIndex < currentQuiz.totalQuestions - 1) {
+                renderQuestion(currentQuiz.currentIndex + 1);
+            }
+        }
+
+        function startQuizTimer() {
+            if (currentQuiz.timerInterval) clearInterval(currentQuiz.timerInterval);
+            const display = document.getElementById('timer-display');
+            const timerBox = document.getElementById('timer-box');
+
+            if (currentQuiz.timeLimitSeconds === 0) {
+                display.textContent = "不限時";
+                currentQuiz.timerInterval = setInterval(() => {
+                    currentQuiz.timeTaken++;
+                }, 1000);
+                return;
+            }
+
+            updateTimerDisplay();
+            currentQuiz.timerInterval = setInterval(() => {
+                currentQuiz.timeRemaining--;
+                currentQuiz.timeTaken++;
+                updateTimerDisplay();
+
+                if (currentQuiz.timeRemaining <= 60) {
+                    timerBox.classList.remove('bg-slate-900');
+                    timerBox.classList.add('bg-rose-600', 'animate-pulse');
+                }
+
+                if (currentQuiz.timeRemaining <= 0) {
+                    clearInterval(currentQuiz.timerInterval);
+                    showToast("測驗時間已到！系統已自動為您交卷。", "warning");
+                    finalizeAndGradeQuiz();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(Math.max(0, currentQuiz.timeRemaining) / 60);
+            const secs = Math.max(0, currentQuiz.timeRemaining) % 60;
+            document.getElementById('timer-display').textContent =
+                `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function confirmSubmitQuiz() {
+            const unansweredCount = currentQuiz.userAnswers.filter(a => a === null).length;
+            const msg = unansweredCount > 0
+                ? `您還有 ${unansweredCount} 題尚未作答，確定現在要提交試卷嗎？`
+                : `您已完成所有題目，確定要提交試卷並生成 AI 成績報告嗎？`;
+
+            showCustomConfirm("確認提交試卷", msg, () => {
+                finalizeAndGradeQuiz();
+            });
+        }
+
+        // ---------------------------------------------------------------------
+        // 6. GRADING, AI SOLUTION SUMMARY & LOCALSTORAGE SAVING
+        // ---------------------------------------------------------------------
+        function finalizeAndGradeQuiz() {
+            if (currentQuiz.timerInterval) {
+                clearInterval(currentQuiz.timerInterval);
+                currentQuiz.timerInterval = null;
+            }
+
+            const letters = ['A', 'B', 'C', 'D'];
+            let correctCount = 0;
+            const weakTopics = new Set();
+            const strongTopics = new Set();
+
+            const detailedQuestions = currentQuiz.questions.map((q, idx) => {
+                const userIdx = currentQuiz.userAnswers[idx];
+                const isCorrect = (userIdx === q.correctIndex);
+                if (isCorrect) {
+                    correctCount++;
+                    strongTopics.add(q.topic);
+                } else {
+                    weakTopics.add(q.topic);
+                }
+
+                return {
+                    questionNumber: idx + 1,
+                    topic: q.topic,
+                    question: q.question,
+                    options: q.options,
+                    studentAnswerIndex: userIdx,
+                    studentAnswerText: userIdx !== null ? `${letters[userIdx]}. ${q.options[userIdx]}` : "未作答",
+                    correctAnswerIndex: q.correctIndex,
+                    correctAnswerText: `${letters[q.correctIndex]}. ${q.options[q.correctIndex]}`,
+                    isCorrect: isCorrect,
+                    scoreEarned: isCorrect ? POINTS_PER_QUESTION : 0,
+                    explanation: q.explanation
+                };
+            });
+
+            const totalScore = correctCount * POINTS_PER_QUESTION;
+            const maxScore = currentQuiz.totalQuestions * POINTS_PER_QUESTION;
+            const percentage = Math.round((totalScore / maxScore) * 100);
+            const minsTaken = Math.floor(currentQuiz.timeTaken / 60);
+            const secsTaken = currentQuiz.timeTaken % 60;
+            const timeTakenStr = `${minsTaken}分${secsTaken}秒`;
+
+            // Generate Comprehensive AI Diagnostic Summary
+            const aiSummary = buildAISolutionSummary(
+                currentQuiz.studentName,
+                correctCount,
+                currentQuiz.totalQuestions,
+                totalScore,
+                maxScore,
+                percentage,
+                Array.from(strongTopics),
+                Array.from(weakTopics)
+            );
+
+            const reportRecord = {
+                reportId: "RPT-" + Date.now(),
+                timestamp: new Date().toLocaleString('zh-HK', { hour12: false }),
+                teacherEmail: TEACHER_EMAIL,
+                studentName: currentQuiz.studentName,
+                studentClass: currentQuiz.studentClass,
+                studentId: currentQuiz.studentId,
+                difficulty: currentQuiz.difficulty,
+                totalQuestions: currentQuiz.totalQuestions,
+                correctCount: correctCount,
+                totalScore: totalScore,
+                maxScore: maxScore,
+                percentage: percentage,
+                timeTaken: timeTakenStr,
+                aiSummary: aiSummary,
+                questions: detailedQuestions,
+                emailSent: false
+            };
+
+            // Save to LocalStorage
+            saveReportToLocalStorage(reportRecord);
+            activeReportData = reportRecord;
+
+            // Render Report View
+            renderReportView(reportRecord);
+        }
+
+        function buildAISolutionSummary(name, correct, total, score, maxScore, pct, strongTopics, weakTopics) {
+            let gradeComment = "";
+            if (pct >= 90) {
+                gradeComment = `表現極為優異！${name} 同學對電壓、電流與電阻的核心概念及歐姆定律計算掌握得非常透徹。`;
+            } else if (pct >= 70) {
+                gradeComment = `表現良好！${name} 同學已掌握大部分基礎電學公式與概念，但在部分進階應用題上仍有進步空間。`;
+            } else if (pct >= 50) {
+                gradeComment = `基礎尚可，${name} 同學已理解基本單位與簡單計算，建議多加複習公式轉換（V = I × R）及串並聯電路特性。`;
+            } else {
+                gradeComment = `仍需努力！建議 ${name} 同學先返回「教學模組」重新操作互動實驗室，熟悉電壓 (V)、電流 (I) 與電阻 (R) 的基本關係後再行挑戰。`;
+            }
+
+            const strongStr = strongTopics.length > 0 ? `【掌握較佳範疇】：${strongTopics.join('、')}。` : "";
+            const weakStr = weakTopics.length > 0
+                ? `【建議重點複習範疇】：${weakTopics.join('、')}。請仔細閱讀下方錯題的 AI 逐題解析，留意單位換算（如分鐘轉秒）及串並聯等效電阻公式。`
+                : `【完美表現】：本次測驗所有題型均全數答對，無知識盲點！`;
+
+            return `${gradeComment} 本次測驗共 ${total} 題，答對 ${correct} 題，總分為 ${score} / ${maxScore} 分（正確率 ${pct}%）。${strongStr}${weakStr}`;
+        }
+
+        function renderReportView(report) {
+            document.getElementById('quiz-setup-view').classList.add('hidden');
+            document.getElementById('quiz-active-view').classList.add('hidden');
+            document.getElementById('quiz-report-view').classList.remove('hidden');
+
+            document.getElementById('rep-timestamp').textContent = report.timestamp;
+            document.getElementById('rep-name').textContent = report.studentName;
+            document.getElementById('rep-class-id').textContent = `${report.studentClass} 班 (${report.studentId} 號)`;
+            document.getElementById('rep-accuracy').textContent = `${report.correctCount} / ${report.totalQuestions} 題 (${report.timeTaken})`;
+            document.getElementById('rep-score').textContent = `${report.totalScore} / ${report.maxScore} 分`;
+            document.getElementById('rep-ai-summary').textContent = report.aiSummary;
+
+            const listContainer = document.getElementById('rep-questions-list');
+            listContainer.innerHTML = '';
+
+            report.questions.forEach(item => {
+                const card = document.createElement('div');
+                card.className = item.isCorrect
+                    ? "p-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 space-y-3"
+                    : "p-5 rounded-2xl border border-rose-200 bg-rose-50/30 space-y-3";
+
+                card.innerHTML = `
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${item.isCorrect ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}">
+                                第 ${item.questionNumber} 題 · ${item.isCorrect ? '答對 (+4分)' : '答錯 (0分)'}
+                            </span>
+                            <span class="text-xs font-semibold text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200">${item.topic}</span>
+                        </div>
+                    </div>
+
+                    <p class="font-bold text-slate-900 text-sm sm:text-base">${item.question}</p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div class="p-3 rounded-xl border ${item.isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'}">
+                            <div class="text-xs font-semibold opacity-75 mb-0.5">學生答案：</div>
+                            <div class="font-bold">${item.studentAnswerText}</div>
+                        </div>
+                        <div class="p-3 rounded-xl border bg-blue-50/70 border-blue-200 text-blue-950">
+                            <div class="text-xs font-semibold text-blue-700 mb-0.5">正確答案：</div>
+                            <div class="font-bold">${item.correctAnswerText}</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                        <strong class="text-indigo-700"><i class="fa-solid fa-robot mr-1"></i>AI 題解：</strong>${item.explanation}
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetQuizToSetup() {
+            document.getElementById('quiz-report-view').classList.add('hidden');
+            document.getElementById('quiz-active-view').classList.add('hidden');
+            document.getElementById('quiz-setup-view').classList.remove('hidden');
+        }
+
+        // ---------------------------------------------------------------------
+        // 7. LOCALSTORAGE MANAGEMENT
+        // ---------------------------------------------------------------------
+        function getStoredResults() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_RESULTS);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveReportToLocalStorage(reportRecord) {
+            const existing = getStoredResults();
+            existing.unshift(reportRecord); // Newest first
+            localStorage.setItem(STORAGE_KEY_RESULTS, JSON.stringify(existing));
+            updateHistoryBadge();
+        }
+
+        function updateHistoryBadge() {
+            const list = getStoredResults();
+            const badge = document.getElementById('history-badge');
+            if (list.length > 0) {
+                badge.textContent = list.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function renderHistoryList() {
+            const list = getStoredResults();
+            const container = document.getElementById('history-list-container');
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="glass-card rounded-2xl p-12 text-center text-slate-500 space-y-3">
+                        <i class="fa-solid fa-folder-open text-4xl text-slate-300"></i>
+                        <p class="font-medium">目前尚無任何本機測驗紀錄</p>
+                        <button onclick="switchTab('quiz')" class="bg-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow">立即開始第一次測驗</button>
+                    </div>
+                `;
+                return;
+            }
+
+            list.forEach((rec, idx) => {
+                const card = document.createElement('div');
+                card.className = "glass-card rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-md transition-shadow";
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="font-bold text-slate-900 text-base">${rec.studentName}</span>
+                            <span class="text-xs font-semibold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md">${rec.studentClass} 班 · ${rec.studentId} 號</span>
+                            <span class="text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-md">總分: ${rec.totalScore} / ${rec.maxScore}</span>
+                            ${rec.emailSent
+                                ? '<span class="text-xs font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-md"><i class="fa-solid fa-check mr-1"></i>已寄送給老師</span>'
+                                : '<span class="text-xs font-semibold bg-slate-100 text-slate-500 px-2.5 py-0.5 rounded-md">尚未寄送電郵</span>'}
+                        </div>
+                        <div class="text-xs text-slate-500">
+                            完成時間：${rec.timestamp} · 答對 ${rec.correctCount}/${rec.totalQuestions} 題 · 用時 ${rec.timeTaken}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 self-end sm:self-center">
+                        <button onclick="viewHistoryReport(${idx})" class="px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition-all">
+                            <i class="fa-solid fa-eye mr-1"></i> 檢視報告
+                        </button>
+                        <button onclick="sendHistoryReportEmail(${idx})" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow transition-all">
+                            <i class="fa-solid fa-paper-plane mr-1"></i> 寄給老師
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function viewHistoryReport(index) {
+            const list = getStoredResults();
+            if (list[index]) {
+                activeReportData = list[index];
+                switchTab('quiz');
+                renderReportView(list[index]);
+            }
+        }
+
+        function sendHistoryReportEmail(index) {
+            const list = getStoredResults();
+            if (list[index]) {
+                activeReportData = list[index];
+                sendReportToTeacherGAS(index);
+            }
+        }
+
+        function clearAllHistory() {
+            showCustomConfirm("清除本機紀錄", "確定要刪除所有儲存在本機瀏覽器的測驗成績紀錄嗎？此操作無法復原。", () => {
+                localStorage.removeItem(STORAGE_KEY_RESULTS);
+                updateHistoryBadge();
+                renderHistoryList();
+                showToast("已清除所有本機測驗紀錄。", "info");
+            });
+        }
+
+        // ---------------------------------------------------------------------
+        // 8. GOOGLE APPS SCRIPT (GAS) EMAIL INTEGRATION
+        // ---------------------------------------------------------------------
+        function loadGasUrl() {
+            const saved = localStorage.getItem(STORAGE_KEY_GAS_URL);
+            if (saved) {
+                document.getElementById('gas-url-input').value = saved;
+            }
+        }
+
+        function saveGasUrl() {
+            const url = document.getElementById('gas-url-input').value.trim();
+            if (!url) {
+                localStorage.removeItem(STORAGE_KEY_GAS_URL);
+                showToast("已清除 GAS Web App 網址設定。", "info");
+                return;
+            }
+            if (!url.startsWith("https://script.google.com/")) {
+                showToast("請輸入有效的 Google Apps Script 網址 (以 https://script.google.com/ 開頭)", "warning");
+                return;
+            }
+            localStorage.setItem(STORAGE_KEY_GAS_URL, url);
+            showToast("GAS Web App 網址已成功儲存！", "success");
+        }
+
+        async function sendReportToTeacherGAS(historyIndex = null) {
+            if (!activeReportData) {
+                showToast("找不到可發送的測驗報告資料。", "error");
+                return;
+            }
+
+            const gasUrl = localStorage.getItem(STORAGE_KEY_GAS_URL) || document.getElementById('gas-url-input').value.trim();
+
+            if (!gasUrl) {
+                showCustomConfirm(
+                    "尚未設定 GAS 網址",
+                    `系統尚未設定 Google Apps Script Web App 網址，無法直接發送至 ${TEACHER_EMAIL}。是否立即前往「GAS 設定」頁面進行配置？`,
+                    () => switchTab('gas')
+                );
+                return;
+            }
+
+            const btn = document.getElementById('btn-send-gas');
+            const originalHTML = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>正在發送至 ${TEACHER_EMAIL}...</span>`;
+            }
+
+            try {
+                // Using mode: 'no-cors' with text/plain avoids CORS preflight issues with Google Apps Script Web Apps
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    },
+                    body: JSON.stringify(activeReportData)
+                });
+
+                // Mark as sent in LocalStorage
+                const list = getStoredResults();
+                const targetIdx = historyIndex !== null
+                    ? historyIndex
+                    : list.findIndex(r => r.reportId === activeReportData.reportId);
+
+                if (targetIdx !== -1) {
+                    list[targetIdx].emailSent = true;
+                    localStorage.setItem(STORAGE_KEY_RESULTS, JSON.stringify(list));
+                }
+
+                showToast(`測驗報告已透過 GAS 成功寄送至 ${TEACHER_EMAIL}！`, "success");
+                if (!document.getElementById('module-history').classList.contains('hidden')) {
+                    renderHistoryList();
+                }
+            } catch (error) {
+                console.error("GAS Send Error:", error);
+                showToast("發送失敗，請檢查網路連線或確認 GAS 部署權限是否設為「所有人 (Anyone)」。", "error");
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
