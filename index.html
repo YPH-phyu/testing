@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HKDSE 物理科無限 MC 練習機</title>
+  <!-- Tailwind CSS for clean styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MathJax for LaTeX rendering -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen font-sans">
+
+  <div class="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
+    <!-- Header -->
+    <header class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <span id="module-category" class="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full"></span>
+          <h1 id="module-title" class="text-xl sm:text-2xl font-bold mt-2 text-slate-800">載入中...</h1>
+          <p id="module-subtitle" class="text-sm text-slate-500 mt-1"></p>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-slate-400">得分統計</div>
+          <div id="score-display" class="text-lg font-bold text-emerald-600">0 / 0</div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-3">
+        <select id="subtopic-select" class="flex-1 min-w-[200px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+        <button id="btn-next" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition cursor-pointer">
+          下一題 (隨機)
+        </button>
+        <button id="btn-pastpaper" class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition cursor-pointer hidden">
+          歷屆經典原題
+        </button>
+      </div>
+      <p id="constants-hint" class="text-xs text-slate-400 mt-2"></p>
+    </header>
+
+    <!-- Question Card -->
+    <main class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5">
+      <!-- Metadata Badges -->
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span id="q-source" class="font-mono text-slate-500"></span>
+        <span id="q-badge" class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md font-medium"></span>
+      </div>
+
+      <!-- Diagram Box -->
+      <div id="diagram-box" class="hidden flex flex-col items-center bg-slate-50/70 border border-slate-200/80 rounded-lg p-4">
+        <svg id="main-svg" viewBox="0 0 380 230" class="w-full max-w-[400px] h-auto"></svg>
+        <p id="diagram-caption" class="text-xs text-slate-500 mt-2"></p>
+      </div>
+
+      <!-- Question Text -->
+      <div id="q-text" class="text-base sm:text-lg leading-relaxed text-slate-800"></div>
+
+      <!-- Options -->
+      <div id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2"></div>
+
+      <!-- Feedback & Explanation -->
+      <div id="feedback-box" class="hidden rounded-lg border p-4 space-y-3 text-sm leading-relaxed">
+        <div id="feedback-header" class="font-bold text-base"></div>
+        <div id="trap-explanation" class="hidden bg-rose-50 border border-rose-200 text-rose-900 p-3 rounded-md"></div>
+        <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-md space-y-2">
+          <div class="font-semibold text-indigo-700">物理原理：</div>
+          <div id="principle-text" class="text-slate-700"></div>
+          <div class="font-semibold text-indigo-700 pt-2">解題步驟：</div>
+          <div id="steps-text" class="text-slate-700 space-y-1"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 1. Define Host API expected by heat1.js -->
+  <script>
+    window.PhysicsUtils = {
+      randChoice: (arr) => arr[Math.floor(Math.random() * arr.length)],
+      randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
+    };
+
+    window.PhysicsModules = {};
+    window.registerPhysicsModule = function(moduleObj) {
+      window.PhysicsModules[moduleObj.id] = moduleObj;
+      initQuizApp(moduleObj);
+    };
+  </script>
+
+  <!-- 2. Load your module script -->
+  <script src="heat1.js"></script>
+
+  <!-- 3. Quiz Engine Controller -->
+  <script>
+    let currentModule = null;
+    let currentQuestion = null;
+    let answered = false;
+    let score = 0;
+    let total = 0;
+
+    function typesetMath() {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch(err => console.warn(err));
+      }
+    }
+
+    function initQuizApp(mod) {
+      currentModule = mod;
+
+      // Populate Header
+      document.getElementById('module-category').textContent = mod.category;
+      document.getElementById('module-title').textContent = mod.title;
+      document.getElementById('module-subtitle').textContent = mod.subtitle;
+      document.getElementById('constants-hint').textContent = mod.constantsHint ? `提示：${mod.constantsHint}` : '';
+
+      // Populate Sub-topics
+      const select = document.getElementById('subtopic-select');
+      select.innerHTML = '';
+      mod.subTopics.forEach(st => {
+        const opt = document.createElement('option');
+        opt.value = st.value;
+        opt.textContent = st.label;
+        select.appendChild(opt);
+      });
+
+      // Past paper button visibility
+      const ppBtn = document.getElementById('btn-pastpaper');
+      if (mod.pastPapers && mod.pastPapers.length > 0) {
+        ppBtn.classList.remove('hidden');
+        ppBtn.onclick = () => renderQuestion(mod.pastPapers[0]());
+      }
+
+      select.onchange = () => loadNextRandom();
+      document.getElementById('btn-next').onclick = () => loadNextRandom();
+
+      loadNextRandom();
+    }
+
+    function loadNextRandom() {
+      const subTopic = document.getElementById('subtopic-select').value;
+      const q = currentModule.generateQuestion(subTopic);
+      renderQuestion(q);
+    }
+
+    function renderQuestion(q) {
+      currentQuestion = q;
+      answered = false;
+
+      // Reset Feedback
+      const feedbackBox = document.getElementById('feedback-box');
+      const trapBox = document.getElementById('trap-explanation');
+      feedbackBox.classList.add('hidden');
+      trapBox.classList.add('hidden');
+
+      // Badges & Text
+      document.getElementById('q-source').textContent = q.source || '';
+      document.getElementById('q-badge').textContent = q.conceptBadge || '';
+      document.getElementById('q-text').innerHTML = q.textZh;
+
+      // Diagram
+      const diagramBox = document.getElementById('diagram-box');
+      const svgEl = document.getElementById('main-svg');
+      const captionEl = document.getElementById('diagram-caption');
+      if (currentModule.drawMainDiagram && q.mainSvgContent) {
+        currentModule.drawMainDiagram(q, svgEl, captionEl, diagramBox);
+      } else {
+        diagramBox.classList.add('hidden');
+      }
+
+      // Options
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+      const labels = ['A', 'B', 'C', 'D'];
+
+      q.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn flex items-center gap-3 p-3.5 rounded-lg border border-slate-300 text-left hover:border-indigo-500 hover:bg-indigo-50/40 transition cursor-pointer';
+        btn.innerHTML = `
+          <span class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-700 font-bold text-sm shrink-0">${labels[idx]}</span>
+          <span class="font-medium text-slate-800">$${optText}$</span>
+        `;
+        btn.onclick = () => handleAnswer(idx, btn);
+        container.appendChild(btn);
+      });
+
+      typesetMath();
+    }
+
+    function handleAnswer(selectedIdx, selectedBtn) {
+      if (answered) return;
+      answered = true;
+      total++;
+
+      const isCorrect = selectedIdx === currentQuestion.correctIndex;
+      if (isCorrect) score++;
+      document.getElementById('score-display').textContent = `${score} / ${total}`;
+
+      const buttons = document.querySelectorAll('.option-btn');
+      buttons.forEach((btn, idx) => {
+        btn.disabled = true;
+        btn.classList.remove('hover:border-indigo-500', 'hover:bg-indigo-50/40', 'cursor-pointer');
+        if (idx === currentQuestion.correctIndex) {
+          btn.classList.add('border-emerald-500', 'bg-emerald-50', 'ring-1', 'ring-emerald-500');
+        } else if (idx === selectedIdx && !isCorrect) {
+          btn.classList.add('border-rose-500', 'bg-rose-50', 'ring-1', 'ring-rose-500');
+        } else {
+          btn.classList.add('opacity-60');
+        }
+      });
+
+      // Show Feedback
+      const feedbackBox = document.getElementById('feedback-box');
+      const feedbackHeader = document.getElementById('feedback-header');
+      const trapBox = document.getElementById('trap-explanation');
+
+      feedbackBox.classList.remove('hidden', 'border-emerald-200', 'bg-emerald-50/30', 'border-rose-200', 'bg-rose-50/30');
+
+      if (isCorrect) {
+        feedbackBox.classList.add('border-emerald-200', 'bg-emerald-50/30');
+        feedbackHeader.className = 'font-bold text-base text-emerald-700';
+        feedbackHeader.textContent = '✓ 回答正確！';
+      } else {
+        feedbackBox.classList.add('border-rose-200', 'bg-rose-50/30');
+        feedbackHeader.className = 'font-bold text-base text-rose-700';
+        const labels = ['A', 'B', 'C', 'D'];
+        feedbackHeader.textContent = `✗ 回答錯誤（正確答案為 ${labels[currentQuestion.correctIndex]}）`;
+
+        const chosenStr = currentQuestion.options[selectedIdx];
+        if (currentQuestion.trapReasons && currentQuestion.trapReasons[chosenStr]) {
+          trapBox.innerHTML = currentQuestion.trapReasons[chosenStr];
+          trapBox.classList.remove('hidden');
+        }
+      }
+
+      document.getElementById('principle-text').innerHTML = currentQuestion.principle;
+      document.getElementById('steps-text').innerHTML = currentQuestion.steps;
+
+      typesetMath();
+    }
+  </script>
+</body>
+</html>
