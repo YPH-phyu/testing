@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Protected Document Viewer — sample2.pdf</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- PDF.js Library (UMD build for reliable single-file execution) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <style>
+        /* Base anti-selection & anti-drag protections */
+        * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        /* Allow typing only inside the page number input */
+        input[type="number"] {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        /* Hide spin buttons on number input */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Custom sleek scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Subtle repeating diagonal watermark overlay */
+        .watermark-overlay {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='180' viewBox='0 0 260 180'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' transform='rotate(-28 130 90)' fill='rgba(15, 23, 42, 0.055)' font-family='Inter, sans-serif' font-weight='700' font-size='13' letter-spacing='2'%3EPROTECTED • VIEW ONLY%3C/text%3E%3C/svg%3E");
+            background-repeat: repeat;
+        }
+
+        /* Completely block printing */
+        @media print {
+            body * {
+                display: none !important;
+                visibility: hidden !important;
+            }
+            #print-blocker {
+                display: flex !important;
+                visibility: visible !important;
+                position: fixed !important;
+                inset: 0 !important;
+                background: #ffffff !important;
+                color: #0f172a !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 24px !important;
+                font-weight: 700 !important;
+                z-index: 999999 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased h-screen flex flex-col overflow-hidden">
+
+    <!-- Hidden Print Blocker Message -->
+    <div id="print-blocker" class="hidden">
+        Printing this protected document is disabled.
+    </div>
+
+    <!-- Top Navigation & Controls Toolbar -->
+    <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 z-30 shadow-lg">
+        
+        <!-- Left: Document Info & Protected Status -->
+        <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                <!-- Shield Lock Icon -->
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                    <h1 class="text-sm sm:text-base font-semibold text-slate-100 truncate">sample2.pdf</h1>
+                    <span class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        No-Download Mode
+                    </span>
+                </div>
+                <p class="text-[11px] text-slate-400 truncate hidden md:block">View-only protected stream • Saving &amp; printing disabled</p>
+            </div>
+        </div>
+
+        <!-- Center: Page Navigation -->
+        <div class="flex items-center bg-slate-800/80 border border-slate-700/70 rounded-xl p-1 gap-1 order-3 sm:order-2 w-full sm:w-auto justify-center">
+            <button id="prev-page-btn" title="Previous Page" class="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/70 disabled:opacity-40 disabled:pointer-events-none transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+
+            <div class="flex items-center gap-1.5 px-2 text-xs sm:text-sm font-medium text-slate-300">
+                <span>Page</span>
+                <input id="page-input" type="number" min="1" value="1" aria-label="Current page"
+                    class="w-11 bg-slate-900 border border-slate-700 rounded-lg py-1 px-1.5 text-center text-slate-100 focus:outline-none focus:border-indigo-500 transition">
+                <span class="text-slate-400">of <span id="total-pages" class="text-slate-200 font-semibold">--</span></span>
+            </div>
+
+            <button id="next-page-btn" title="Next Page" class="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/70 disabled:opacity-40 disabled:pointer-events-none transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Right: Zoom & Rotation Controls -->
+        <div class="flex items-center gap-1.5 order-2 sm:order-3">
+            <div class="flex items-center bg-slate-800/80 border border-slate-700/70 rounded-xl p-1">
+                <button id="zoom-out-btn" title="Zoom Out" class="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/70 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" />
+                    </svg>
+                </button>
+                
+                <button id="fit-width-btn" title="Reset to Fit Width" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-200 hover:bg-slate-700/70 transition min-w-[60px] text-center">
+                    <span id="zoom-level-text">Fit</span>
+                </button>
+
+                <button id="zoom-in-btn" title="Zoom In" class="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/70 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </div>
+
+            <button id="rotate-btn" title="Rotate 90° Clockwise" class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/70 text-slate-300 hover:text-white hover:bg-slate-700/70 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Scrollable PDF Viewport -->
+    <main id="viewer-container" class="flex-1 overflow-auto relative bg-slate-950 flex flex-col items-center p-3 sm:p-6 md:p-8">
+        
+        <!-- Loading State Overlay -->
+        <div id="loading-state" class="my-auto flex flex-col items-center justify-center text-center max-w-sm p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-2xl">
+            <div class="w-12 h-12 rounded-full border-4 border-slate-700 border-t-indigo-500 animate-spin mb-4"></div>
+            <h2 class="text-base font-semibold text-slate-100 mb-1">Loading Protected PDF</h2>
+            <p class="text-xs text-slate-400 mb-4">Streaming document securely into canvas...</p>
+            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div id="loading-progress" class="bg-indigo-500 h-full rounded-full transition-all duration-200" style="width: 15%"></div>
+            </div>
+            <span id="loading-percent" class="text-[11px] font-medium text-slate-400 mt-2">Connecting...</span>
+        </div>
+
+        <!-- Error State Overlay (Hidden by default) -->
+        <div id="error-state" class="hidden my-auto flex flex-col items-center justify-center text-center max-w-md p-6 rounded-2xl bg-slate-900 border border-rose-500/30 shadow-2xl">
+            <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mb-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h2 class="text-base font-semibold text-slate-100 mb-1">Unable to Load Document</h2>
+            <p id="error-message" class="text-xs text-slate-400 mb-5 leading-relaxed">
+                Could not fetch the PDF stream from the remote server. Please check your network connection or CORS permissions.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-2.5">
+                <button id="retry-btn" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-lg shadow-indigo-500/20">
+                    Retry Loading
+                </button>
+                <button id="local-file-btn" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition">
+                    Open Local PDF (Protected View)
+                </button>
+                <input id="local-file-input" type="file" accept="application/pdf" class="hidden">
+            </div>
+        </div>
+
+        <!-- Container where PDF page canvases are dynamically injected -->
+        <div id="pages-wrapper" class="flex flex-col items-center gap-6 w-full max-w-full pb-12"></div>
+
+    </main>
+
+    <!-- Security Notification Toast -->
+    <div id="security-toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 translate-y-4 transition-all duration-300">
+        <div class="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-slate-900/95 border border-amber-500/40 text-slate-100 shadow-2xl backdrop-blur-md">
+            <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span id="security-toast-text" class="text-xs font-medium">Protected Document: Downloading and copying are disabled.</span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Protected PDF Reader Application
+         * Renders PDF pages strictly onto HTML5 Canvas elements with anti-download,
+         * anti-print, anti-copy, and right-click deterrents.
+         */
+
+        const TARGET_PDF_URL = 'https://testing.yph.workers.dev/sample2.pdf';
+
+        // Configure PDF.js Worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Application State
+        const state = {
+            pdfDoc: null,
+            totalPages: 0,
+            currentPage: 1,
+            scale: 1.0,
+            isFitWidth: true,
+            rotation: 0,
+            renderTasks: new Map(),
+            pageObserver: null,
+            toastTimeout: null
+        };
+
+        // DOM References
+        const els = {
+            viewerContainer: document.getElementById('viewer-container'),
+            pagesWrapper: document.getElementById('pages-wrapper'),
+            loadingState: document.getElementById('loading-state'),
+            loadingProgress: document.getElementById('loading-progress'),
+            loadingPercent: document.getElementById('loading-percent'),
+            errorState: document.getElementById('error-state'),
+            errorMessage: document.getElementById('error-message'),
+            retryBtn: document.getElementById('retry-btn'),
+            localFileBtn: document.getElementById('local-file-btn'),
+            localFileInput: document.getElementById('local-file-input'),
+            prevPageBtn: document.getElementById('prev-page-btn'),
+            nextPageBtn: document.getElementById('next-page-btn'),
+            pageInput: document.getElementById('page-input'),
+            totalPages: document.getElementById('total-pages'),
+            zoomInBtn: document.getElementById('zoom-in-btn'),
+            zoomOutBtn: document.getElementById('zoom-out-btn'),
+            fitWidthBtn: document.getElementById('fit-width-btn'),
+            zoomLevelText: document.getElementById('zoom-level-text'),
+            rotateBtn: document.getElementById('rotate-btn'),
+            securityToast: document.getElementById('security-toast'),
+            securityToastText: document.getElementById('security-toast-text')
+        };
+
+        /**
+         * Displays a temporary security warning toast when restricted actions are attempted.
+         */
+        function showSecurityToast(message) {
+            els.securityToastText.textContent = message;
+            els.securityToast.classList.remove('opacity-0', 'translate-y-4');
+            els.securityToast.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(state.toastTimeout);
+            state.toastTimeout = setTimeout(() => {
+                els.securityToast.classList.remove('opacity-100', 'translate-y-0');
+                els.securityToast.classList.add('opacity-0', 'translate-y-4');
+            }, 2600);
+        }
+
+        /**
+         * Attaches global anti-download, anti-print, anti-copy, and right-click protections.
+         */
+        function initProtections() {
+            // Block right-click context menu ("Save image as...", "Print...", etc.)
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showSecurityToast('Right-click is disabled on this protected document.');
+            });
+
+            // Block dragging elements or canvases
+            document.addEventListener('dragstart', (e) => {
+                e.preventDefault();
+            });
+
+            // Block text selection outside the page jump input
+            document.addEventListener('selectstart', (e) => {
+                if (e.target && e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                }
+            });
+
+            // Block copy/cut clipboard events
+            document.addEventListener('copy', (e) => {
+                if (e.target && e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    showSecurityToast('Copying content from this document is disabled.');
+                }
+            });
+
+            // Intercept Save, Print, Copy, and View-Source shortcuts
+            document.addEventListener('keydown', (e) => {
+                const isMod = e.ctrlKey || e.metaKey;
+                const key = (e.key || '').toLowerCase();
+
+                if (isMod && key === 's') {
+                    e.preventDefault();
+                    showSecurityToast('Downloading or saving this document is disabled.');
+                } else if (isMod && key === 'p') {
+                    e.preventDefault();
+                    showSecurityToast('Printing this protected document is disabled.');
+                } else if (isMod && (key === 'c' || key === 'x') && (!e.target || e.target.tagName !== 'INPUT')) {
+                    e.preventDefault();
+                    showSecurityToast('Copying content is disabled.');
+                } else if (isMod && key === 'u') {
+                    e.preventDefault();
+                    showSecurityToast('Viewing document source is disabled.');
+                }
+            });
+        }
+
+        /**
+         * Creates isolated canvas containers with protective watermark shields for every page.
+         */
+        function createPageContainers(numPages) {
+            els.pagesWrapper.innerHTML = '';
+
+            for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                const pageCard = document.createElement('div');
+                pageCard.dataset.pageNumber = String(pageNum);
+                pageCard.className = 'relative rounded-xl overflow-hidden bg-white shadow-2xl ring-1 ring-slate-800/80 flex items-center justify-center max-w-full';
+
+                const canvas = document.createElement('canvas');
+                canvas.className = 'block max-w-full h-auto pointer-events-none';
+                canvas.setAttribute('aria-label', `Document page ${pageNum}`);
+
+                // Transparent shield with repeating diagonal watermark
+                const shield = document.createElement('div');
+                shield.className = 'watermark-overlay absolute inset-0 z-10';
+
+                // Subtle page number pill
+                const badge = document.createElement('div');
+                badge.className = 'absolute bottom-2.5 right-3 z-20 px-2 py-0.5 rounded-md bg-slate-900/75 text-slate-200 text-[10px] font-medium backdrop-blur-sm pointer-events-none';
+                badge.textContent = `${pageNum} / ${numPages}`;
+
+                pageCard.appendChild(canvas);
+                pageCard.appendChild(shield);
+                pageCard.appendChild(badge);
+                els.pagesWrapper.appendChild(pageCard);
+            }
+        }
+
+        /**
+         * Calculates the effective scale factor for a page based on Fit-Width or manual zoom.
+         */
+        function getEffectiveScale(page) {
+            if (!state.isFitWidth) {
+                return state.scale;
+            }
+            const unscaledViewport = page.getViewport({ scale: 1.0, rotation: state.rotation });
+            const horizontalPadding = window.innerWidth < 640 ? 28 : 64;
+            const availableWidth = Math.max(260, els.viewerContainer.clientWidth - horizontalPadding);
+            const fitScale = Math.min(2.2, availableWidth / unscaledViewport.width);
+            state.scale = +fitScale.toFixed(3);
+            return state.scale;
+        }
+
+        /**
+         * Renders a single PDF page onto its corresponding high-DPI HTML5 canvas.
+         */
+        async function renderPage(pageNum) {
+            if (!state.pdfDoc) return;
+
+            const pageCard = els.pagesWrapper.querySelector(`[data-page-number="${pageNum}"]`);
+            if (!pageCard) return;
+
+            const canvas = pageCard.querySelector('canvas');
+            const ctx = canvas.getContext('2d', { alpha: false });
+
+            // Cancel any in-flight render task for this page
+            if (state.renderTasks.has(pageNum)) {
+                try {
+                    state.renderTasks.get(pageNum).cancel();
+                } catch (_) {
+                    // Ignore cancellation errors
+                }
+                state.renderTasks.delete(pageNum);
+            }
+
+            try {
+                const page = await state.pdfDoc.getPage(pageNum);
+                const scale = getEffectiveScale(page);
+                updateZoomDisplay();
+
+                const viewport = page.getViewport({ scale, rotation: state.rotation });
+                const outputScale = Math.min(window.devicePixelRatio || 1, 2.5);
+
+                canvas.width = Math.floor(viewport.width * outputScale);
+                canvas.height = Math.floor(viewport.height * outputScale);
+                canvas.style.width = `${Math.floor(viewport.width)}px`;
+                canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport,
+                    transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
+                };
+
+                const renderTask = page.render(renderContext);
+                state.renderTasks.set(pageNum, renderTask);
+                await renderTask.promise;
+                state.renderTasks.delete(pageNum);
+            } catch (err) {
+                if (err && err.name !== 'RenderingCancelledException') {
+                    console.error(`Error rendering page ${pageNum}:`, err);
+                }
+            }
+        }
+
+        /**
+         * Renders all pages sequentially to ensure crisp display and smooth scrolling.
+         */
+        async function renderAllPages() {
+            if (!state.pdfDoc) return;
+            for (let pageNum = 1; pageNum <= state.totalPages; pageNum++) {
+                await renderPage(pageNum);
+            }
+        }
+
+        /**
+         * Updates toolbar button disabled states and current page indicator.
+         */
+        function updatePageControls() {
+            els.prevPageBtn.disabled = state.currentPage <= 1;
+            els.nextPageBtn.disabled = state.currentPage >= state.totalPages;
+            els.pageInput.value = state.currentPage;
+        }
+
+        /**
+         * Updates the zoom level badge in the toolbar.
+         */
+        function updateZoomDisplay() {
+            els.zoomLevelText.textContent = state.isFitWidth
+                ? 'Fit'
+                : `${Math.round(state.scale * 100)}%`;
+        }
+
+        /**
+         * Smoothly scrolls to the requested page number.
+         */
+        function goToPage(targetPage) {
+            if (!state.pdfDoc) return;
+            const clamped = Math.max(1, Math.min(state.totalPages, targetPage));
+            state.currentPage = clamped;
+            updatePageControls();
+
+            const pageCard = els.pagesWrapper.querySelector(`[data-page-number="${clamped}"]`);
+            if (pageCard) {
+                pageCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        /**
+         * Observes page visibility inside the scroll container to sync the current page indicator.
+         */
+        function setupScrollObserver() {
+            if (state.pageObserver) {
+                state.pageObserver.disconnect();
+            }
+
+            state.pageObserver = new IntersectionObserver(
+                (entries) => {
+                    let bestEntry = null;
+                    for (const entry of entries) {
+                        if (entry.isIntersecting) {
+                            if (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio) {
+                                bestEntry = entry;
+                            }
+                        }
+                    }
+
+                    if (bestEntry) {
+                        const pageNum = parseInt(bestEntry.target.dataset.pageNumber, 10);
+                        if (!isNaN(pageNum) && pageNum !== state.currentPage) {
+                            state.currentPage = pageNum;
+                            updatePageControls();
+                        }
+                    }
+                },
+                {
+                    root: els.viewerContainer,
+                    threshold: [0.25, 0.5, 0.75]
+                }
+            );
+
+            const cards = els.pagesWrapper.querySelectorAll('[data-page-number]');
+            cards.forEach((card) => state.pageObserver.observe(card));
+        }
+
+        /**
+         * Validates that an ArrayBuffer begins with the "%PDF" magic signature.
+         */
+        function isValidPdfBuffer(buffer) {
+            if (!buffer || buffer.byteLength < 5) return false;
+            const header = new Uint8Array(buffer, 0, 5);
+            return (
+                header[0] === 0x25 &&
+                header[1] === 0x50 &&
+                header[2] === 0x44 &&
+                header[3] === 0x46
+            );
+        }
+
+        /**
+         * Performs a single fetch attempt with a full-lifecycle timeout (covering both
+         * initial connection and full body download) and explicit AbortController reason.
+         */
+        async function fetchSinglePdfAttempt(targetUrl, timeoutMs, externalSignal, onProgress) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                controller.abort(new Error(`Request timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+
+            const onExternalAbort = () => {
+                controller.abort(new Error('Superseded by faster mirror'));
+            };
+
+            if (externalSignal) {
+                if (externalSignal.aborted) {
+                    clearTimeout(timeoutId);
+                    throw new Error('Request cancelled');
+                }
+                externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+            }
+
+            try {
+                const response = await fetch(targetUrl, {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+                }
+
+                const contentLength = parseInt(response.headers.get('Content-Length') || '0', 10);
+                let buffer;
+
+                if (response.body && contentLength > 0) {
+                    const reader = response.body.getReader();
+                    const chunks = [];
+                    let received = 0;
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        chunks.push(value);
+                        received += value.length;
+                        if (onProgress) {
+                            const pct = Math.min(95, Math.round((received / contentLength) * 100));
+                            onProgress(pct);
+                        }
+                    }
+
+                    const combined = new Uint8Array(received);
+                    let offset = 0;
+                    for (const chunk of chunks) {
+                        combined.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+                    buffer = combined.buffer;
+                } else {
+                    if (onProgress) onProgress(75);
+                    buffer = await response.arrayBuffer();
+                }
+
+                if (!isValidPdfBuffer(buffer)) {
+                    throw new Error('Response did not contain valid PDF binary data.');
+                }
+
+                return new Uint8Array(buffer);
+            } finally {
+                clearTimeout(timeoutId);
+                if (externalSignal) {
+                    externalSignal.removeEventListener('abort', onExternalAbort);
+                }
+            }
+        }
+
+        /**
+         * Fetches the PDF binary stream using a direct request first, then races
+         * multiple CORS relays in parallel if direct cross-origin access is blocked.
+         */
+        async function fetchPdfBytesWithFallback(url) {
+            // 1. Fast direct attempt (avoids custom headers that trigger CORS preflight)
+            els.loadingPercent.textContent = 'Connecting directly to document server...';
+            els.loadingProgress.style.width = '20%';
+
+            try {
+                const directBytes = await fetchSinglePdfAttempt(url, 7000, null, (pct) => {
+                    els.loadingProgress.style.width = `${pct}%`;
+                    els.loadingPercent.textContent = `Streaming document: ${pct}%`;
+                });
+                els.loadingProgress.style.width = '100%';
+                els.loadingPercent.textContent = 'Rendering protected pages...';
+                return directBytes;
+            } catch (directErr) {
+                console.warn('Direct fetch unavailable, switching to CORS relays:', directErr.message || directErr);
+            }
+
+            // 2. Race multiple CORS relays in parallel so the fastest valid mirror wins
+            els.loadingPercent.textContent = 'Connecting via secure CORS relays...';
+            els.loadingProgress.style.width = '45%';
+
+            const relayUrls = [
+                `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            ];
+
+            const raceController = new AbortController();
+
+            try {
+                const winnerBytes = await Promise.any(
+                    relayUrls.map((relayUrl) =>
+                        fetchSinglePdfAttempt(relayUrl, 10000, raceController.signal, null)
+                    )
+                );
+
+                // Cancel remaining slower relays cleanly
+                raceController.abort(new Error('Fastest relay completed'));
+
+                els.loadingProgress.style.width = '100%';
+                els.loadingPercent.textContent = 'Rendering protected pages...';
+                return winnerBytes;
+            } catch (aggregateErr) {
+                const reasons = aggregateErr && aggregateErr.errors
+                    ? aggregateErr.errors.map((e) => e.message || String(e)).join('; ')
+                    : (aggregateErr.message || 'All relay endpoints failed');
+                throw new Error(`Unable to retrieve PDF stream (${reasons})`);
+            }
+        }
+
+        /**
+         * Initializes PDF.js directly from an in-memory Uint8Array buffer
+         * so no downloadable URL or range requests are exposed.
+         */
+        async function renderPdfFromBytes(pdfBytes) {
+            const loadingTask = pdfjsLib.getDocument({
+                data: pdfBytes,
+                disableRange: true,
+                disableStream: true,
+                disableAutoFetch: true
+            });
+
+            state.pdfDoc = await loadingTask.promise;
+            state.totalPages = state.pdfDoc.numPages;
+            state.currentPage = 1;
+
+            els.totalPages.textContent = state.totalPages;
+            els.pageInput.max = state.totalPages;
+
+            els.loadingState.classList.add('hidden');
+
+            createPageContainers(state.totalPages);
+            updatePageControls();
+            setupScrollObserver();
+            await renderAllPages();
+        }
+
+        /**
+         * Loads the remote PDF document into memory without exposing any download links.
+         */
+        async function loadDocument() {
+            els.loadingState.classList.remove('hidden');
+            els.errorState.classList.add('hidden');
+            els.pagesWrapper.innerHTML = '';
+            els.loadingProgress.style.width = '10%';
+
+            try {
+                const pdfBytes = await fetchPdfBytesWithFallback(TARGET_PDF_URL);
+                await renderPdfFromBytes(pdfBytes);
+            } catch (error) {
+                console.warn('PDF stream unavailable:', error.message || error);
+                els.loadingState.classList.add('hidden');
+                els.errorState.classList.remove('hidden');
+                els.errorMessage.textContent =
+                    'The remote server blocked cross-origin browser requests (CORS) or is unreachable in this sandbox. Click Retry or open a local PDF in protected view-only mode.';
+            }
+        }
+
+        // Event Listeners for Controls
+        els.prevPageBtn.addEventListener('click', () => goToPage(state.currentPage - 1));
+        els.nextPageBtn.addEventListener('click', () => goToPage(state.currentPage + 1));
+
+        els.pageInput.addEventListener('change', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (!isNaN(val)) {
+                goToPage(val);
+            } else {
+                els.pageInput.value = state.currentPage;
+            }
+        });
+
+        els.zoomInBtn.addEventListener('click', async () => {
+            state.isFitWidth = false;
+            state.scale = Math.min(3.0, +(state.scale + 0.2).toFixed(2));
+            updateZoomDisplay();
+            await renderAllPages();
+        });
+
+        els.zoomOutBtn.addEventListener('click', async () => {
+            state.isFitWidth = false;
+            state.scale = Math.max(0.4, +(state.scale - 0.2).toFixed(2));
+            updateZoomDisplay();
+            await renderAllPages();
+        });
+
+        els.fitWidthBtn.addEventListener('click', async () => {
+            state.isFitWidth = true;
+            await renderAllPages();
+        });
+
+        els.rotateBtn.addEventListener('click', async () => {
+            state.rotation = (state.rotation + 90) % 360;
+            await renderAllPages();
+        });
+
+        els.retryBtn.addEventListener('click', loadDocument);
+
+        els.localFileBtn.addEventListener('click', () => {
+            els.localFileInput.click();
+        });
+
+        els.localFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            els.loadingState.classList.remove('hidden');
+            els.errorState.classList.add('hidden');
+            els.loadingPercent.textContent = `Opening ${file.name}...`;
+            els.loadingProgress.style.width = '60%';
+
+            try {
+                const buffer = await file.arrayBuffer();
+                if (!isValidPdfBuffer(buffer)) {
+                    throw new Error('Selected file is not a valid PDF document.');
+                }
+                const titleEl = document.querySelector('header h1');
+                if (titleEl) titleEl.textContent = file.name;
+                await renderPdfFromBytes(new Uint8Array(buffer));
+            } catch (err) {
+                els.loadingState.classList.add('hidden');
+                els.errorState.classList.remove('hidden');
+                els.errorMessage.textContent = err.message || 'Unable to read the selected PDF file.';
+            } finally {
+                e.target.value = '';
+            }
+        });
+
+        // Debounced Window Resize Handler for Responsive Fit-Width
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (state.isFitWidth && state.pdfDoc) {
+                    renderAllPages();
+                }
+            }, 220);
+        });
+
+        // Boot Application
+        window.addEventListener('DOMContentLoaded', () => {
+            initProtections();
+            loadDocument();
+        });
+    </script>
+</body>
+</html>
